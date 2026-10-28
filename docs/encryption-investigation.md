@@ -124,6 +124,32 @@ Niente fix rapido via JSON/config. Le strade reali:
 La via 1 è la più promettente: separa la feature voluta (SSD, lato corpo) da
 quella non voluta (cifratura, lato moduli).
 
+### CORREZIONE (dai file di versione del blob)
+
+`firmware/redmine.txt` documenta la customizzazione di questa build:
+
+> 基于20201112固件，修改谷歌街景模式码率限制
+> = "Basato sul firmware 20201112, modificata la limitazione del bitrate della
+>   modalità Google Street View."
+
+`firmware/version.txt` = `2.19072200.190716.190716.211210B1` (firmware moduli).
+
+**La modifica custom documentata è SOLO il bitrate GSV — niente cifratura né
+SSD.** Quindi la conclusione "TROVATO" va ridimensionata:
+
+- Le stringhe "Crypto Engine / aes / key" nel blob sono quasi certamente
+  **boilerplate dell'SDK Ambarella** (presenti in ogni firmware Titan), non una
+  cifratura su misura.
+- È probabile che **la cifratura/registrazione-su-SSD non sia in v1.2.23**. Il
+  firmware di quella feature potrebbe essere un **altro pacchetto**: sospettato
+  n.1 `UL2GSV_v17.zip` (149 MB, "Upload-to-GSV") presente nel Drive.
+- Alternativa: la "cifratura" è il **formato proprietario** Insta360 dei file
+  origin (serve lo Stitcher), non una cifratura con chiave.
+
+**Da verificare:** (A) contesto delle stringhe crypto nel blob (legate alla
+registrazione o solo test SDK); (B) contenuto di `UL2GSV_v17.zip`; (C) impronta
+di un file registrato reale.
+
 ## Strade possibili (vecchie ipotesi, superate dai risultati sopra)
 
 1. **File non cifrato davvero** → nessuna cifratura: usare lo strumento giusto
