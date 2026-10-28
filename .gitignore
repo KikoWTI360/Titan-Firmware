@@ -1,0 +1,55 @@
+# === Insta360 Titan firmware project — .gitignore ===
+# Teniamo il repo leggero e puliti i confini legali:
+# - NON versioniamo il pacchetto di update originale (binario proprietario Insta360)
+# - NON versioniamo i binari pesanti estratti (ELF, kernel, blob DSP, wav, lib)
+# - Versioniamo SOLO: script, documentazione, e i nostri mod testuali in mods/
+
+# --- Pacchetto di update originale (proprietario, NON ridistribuire) ---
+*.bin
+*.zip
+original-firmware/*
+!original-firmware/README.md
+!original-firmware/.gitkeep
+
+# --- Albero estratto (ricostruibile con tools/extract_firmware.py) ---
+extracted/*
+!extracted/README.md
+!extracted/.gitkeep
+
+# --- Blob/binari pesanti ovunque si trovino ---
+*.devfw
+*.img
+*.so
+*.so.*
+*.a
+*.o
+*.wav
+*.elf
+Image
+zImage
+*.dtb
+*.ko
+
+# --- Backup del dispositivo (dump delle partizioni / tar del filesystem) ---
+device-backups/
+*.tar.gz
+*.tar
+*.mmcblk*
+*.dump
+
+# --- Python / tooling ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
