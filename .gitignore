@@ -37,6 +37,10 @@ device-backups/
 *.mmcblk*
 *.dump
 
+# --- Output dell'inventario (contiene frammenti di config proprietari) ---
+docs/inventory.json
+docs/inventory*.json
+
 # --- Python / tooling ---
 __pycache__/
 *.pyc
