@@ -37,6 +37,10 @@ device-backups/
 *.mmcblk*
 *.dump
 
+# --- Copie di lavoro dei file del firmware dentro i mod (proprietarie) ---
+mods/*/work/
+mods/**/*.orig
+
 # --- Output dell'inventario (contiene frammenti di config proprietari) ---
 docs/inventory.json
 docs/inventory*.json

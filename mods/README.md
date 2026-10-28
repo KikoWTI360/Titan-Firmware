@@ -7,19 +7,19 @@ cronologia git è utile.
 
 ## Convenzione
 
-Una cartella per mod, che rispecchia il percorso dentro `titan_update/`:
+Una cartella numerata per mod. In git vanno **solo** la descrizione e i nostri
+script, non le copie dei file del firmware (sono contenuto proprietario):
 
 ```
 mods/
-└── <nome-mod>/
-    ├── README.md                 # cosa fa, perché, come applicarlo, come testarlo
-    ├── original/                 # copia ESATTA del/dei file originali (riferimento)
-    │   └── cfg/takevideo_template.json
-    └── patched/                  # la nostra versione modificata
-        └── cfg/takevideo_template.json
+└── NN-<nome-mod>/
+    ├── README.md        # obiettivo, modifica esatta, rischi, procedura, rollback, registro test
+    ├── <script>.py      # nostro script che applica la modifica in modo ripetibile
+    └── work/            # (gitignored) copie originali e modificate dei file del firmware
 ```
 
-In alternativa, per modifiche piccole, un singolo file `.diff`/`.patch`.
+La modifica si descrive come ricetta (file, chiave, valore prima → dopo) e la
+applica uno script, così è ripetibile su ogni unità della flotta.
 
 ## Regole
 
@@ -31,7 +31,8 @@ In alternativa, per modifiche piccole, un singolo file `.diff`/`.patch`.
   applicarla in place sul device, come verificarla, come fare rollback.
 - Testa ogni mod su **una sola unità sacrificabile** prima della flotta.
 
-## Mod pianificati / da fare
+## Mod
 
-_(Da compilare quando definiamo le funzioni/bug — es. limite di bitrate, nuove
-modalità di ripresa, comportamento OSC, timelapse, ecc.)_
+| # | Mod | Stato |
+|---|-----|-------|
+| 01 | [Bitrate di registrazione GSV](01-bitrate-gsv/README.md) | Pronto da provare su unità sacrificabile |
