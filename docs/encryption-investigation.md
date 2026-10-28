@@ -6,6 +6,11 @@ decifrare i file vecchi.
 
 **Data indagine:** 2026-10-28 · firmware estratto da `Insta360_Titan_Update.bin`.
 
+**Confermato dall'utente:** `Insta360_Titan_Update_v1.2.23` è la **build custom**
+effettivamente in uso sulla flotta. L'analisi qui sotto è quindi su quella build.
+Esito: nessun interruttore di cifratura nel layer applicativo → i prossimi passi
+sono (1) l'impronta di un file registrato e (2) l'accesso al device via adb.
+
 ## Cosa abbiamo escluso (con prove)
 
 Il layer applicativo **non contiene un interruttore di cifratura**:

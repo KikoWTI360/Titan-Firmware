@@ -12,9 +12,33 @@ camera di cui non esiste un backup.
 
 ## Parte 1 — Ottenere root
 
-Due vie, in ordine di rischio crescente. Prova la 1, poi la 2.
+Tre vie. **La A (adb) è la più comoda ed è confermata possibile** (il servizio
+`adbd` è negli script di avvio, `init.rc`). La UART resta la rete di sicurezza
+per il recupero da brick.
 
-### Via A — UART (console seriale) — la più affidabile
+### Via A — adb (confermata: `adbd` è nei servizi di avvio)
+
+Il firmware avvia `service adbd /usr/local/bin/adbd` (classe `base`, `critical`),
+quindi la camera espone un'interfaccia adb su USB.
+
+1. Installa adb sul Mac: `brew install android-platform-tools`.
+2. Collega la camera (corpo principale) al Mac via USB e accendila.
+3. Verifica accesso e privilegi:
+   ```bash
+   adb devices
+   adb shell id          # se esce uid=0(root) abbiamo già root
+   ```
+4. Se `adb devices` non mostra nulla: controlla il cavo/porta, prova
+   `adb kill-server && adb devices`, verifica che la camera non sia in una
+   modalità USB diversa (c'è `camera._change_udisk_mode` per la memoria di
+   massa; per adb serve la modalità normale). In ultima istanza, UART.
+
+Recon iniziale sul device (sola lettura, sicuro):
+```bash
+adb shell 'mount; echo ---; cat /proc/mounts; echo ---; ls -la /mnt/udisk1 /mnt/udisk2 2>/dev/null; echo ---; cat /home/nvidia/insta360/etc/vid_customer.json; echo ---; ls -la /usr/local/bin/monitor'
+```
+
+### Via B — UART (console seriale) — rete di sicurezza anti-brick
 
 La console seriale è quasi sempre esposta sui Jetson e dà accesso sia al
 bootloader sia al login Linux. È **read anche quando la rete è giù** ed è la tua
@@ -51,7 +75,7 @@ rete di sicurezza per il recupero.
    `mount` (quali partizioni sono RW/RO), `ls -la /usr/local/bin`,
    `cat /home/nvidia/insta360/etc/default.prop`.
 
-### Via B — SSH (se la Jetson lo espone)
+### Via C — SSH (se la Jetson lo espone)
 
 Più comodo per il lavoro quotidiano, ma dipende dal fatto che il firmware abbia
 un server SSH attivo e una via di rete.
@@ -70,7 +94,7 @@ un server SSH attivo e una via di rete.
 4. Se trovi telnet (porta 23) invece di SSH, è comunque una via di root — ma
    configura SSH appena dentro e disattiva telnet dopo.
 
-> Se né A né B funzionano al primo colpo: la UART resta la strada maestra. Un
+> Se né adb (A) né SSH (C) rispondono: la UART (B) resta la strada maestra. Un
 > ultimo fallback è lo smontaggio dell'eMMC/SD per leggerla da fuori, ma è
 > invasivo — tienilo come extrema ratio.
 
