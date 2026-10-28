@@ -81,7 +81,50 @@ Con una shell si può: vedere come viene montato l'SSD a runtime, ispezionare
 `monitor` (orchestratore presente solo sul device), e soprattutto **testare**
 qualunque modifica su una sola unità.
 
-## Strade possibili (da scegliere dopo i test)
+## TROVATO: la cifratura è nel firmware dei moduli (Ambarella Crypto Engine)
+
+L'esame del blob `firmware/sys_dsp_rom.devfw` (31 MB) è decisivo. Il blob **non è
+opaco**: entropia ~5.4/8, pieno di stringhe leggibili. È il firmware dei moduli
+camera, basati su SoC **Ambarella** (encoder H264/H265: `AMBA_DSP_H264ENC...`).
+
+Contiene esplicitamente codice di cifratura che usa il **Crypto Engine hardware**
+del DSP:
+
+```
+%s [chan] [aes|des] [key] [string]     <- interfaccia che cifra con AES/DES e una chiave
+Crypto Engine %u:
+Ciphertext :
+Key        :
+3. t app key mode
+```
+
+**Conclusione:** i moduli cifrano il flusso registrato tramite il Crypto Engine
+(AES/DES) del loro SoC Ambarella; `camerad` sul corpo principale riceve/scrive e
+gestisce solo l'errore `USB_CMD_ENCRYPT_FAIL`. Non esiste un interruttore nel
+layer applicativo perché la cifratura **non è lì**: è nel firmware dei moduli.
+
+### Implicazione per l'obiettivo (file nuovi in chiaro)
+
+Niente fix rapido via JSON/config. Le strade reali:
+
+1. **Reflash dei moduli con firmware Titan di SERIE (non cifrante)**, mantenendo
+   il firmware custom del CORPO principale (che fa la registrazione su SSD). La
+   registrazione su SSD è lato corpo (camerad + udisk mount); la cifratura è lato
+   moduli → sostituendo solo il firmware dei moduli con quello ufficiale, i
+   moduli dovrebbero streammare in chiaro e il corpo scriverebbe file in chiaro
+   sull'SSD. **Da validare su un'unità sacrificabile.** Richiede un
+   `sys_dsp_rom.devfw` ufficiale (da un update Insta360 standard) e il meccanismo
+   di flash dei moduli (`update_app`/`module_tool`).
+2. **Patch del firmware dei moduli custom** per saltare la chiamata al Crypto
+   Engine. Richiede reverse engineering del firmware Ambarella (possibili
+   checksum/firme). Più difficile.
+3. **Revert completo al firmware ufficiale** → niente cifratura, ma si perde
+   anche la registrazione diretta su SSD. Da evitare se serve l'SSD.
+
+La via 1 è la più promettente: separa la feature voluta (SSD, lato corpo) da
+quella non voluta (cifratura, lato moduli).
+
+## Strade possibili (vecchie ipotesi, superate dai risultati sopra)
 
 1. **File non cifrato davvero** → nessuna cifratura: usare lo strumento giusto
    (es. Stitcher) o correggere il container. Caso migliore.
