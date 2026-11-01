@@ -128,9 +128,10 @@ adb shell 'for f in <cartella>/*; do /usr/local/bin/python3.6 /tmp/elf_probe.py 
   kbit/s, 8 SD nei moduli, SSD collegato ma `save_path` ancora `/mnt/SD0`):
   stesso risultato dell'APK. `/mnt/SD0/VID_20261101_201044` contiene gli 8
   `origin_N.mp4` + `pro.prj`, 380 MB in 15 s (`df`: SD0 +379 MiB, SSD 0, SD dei
-  moduli invariate). Il comando dell'APK è quindi riprodotto per intero. Il
-  menu e il riavvio non hanno spostato `save_path` sull'SSD; la camera passa
-  da sola a un'altra memoria principale quando quella attuale viene rimossa.
+  moduli invariate). Il comando dell'APK è quindi riprodotto per intero. Con
+  SD0 e SSD entrambi presenti `save_path` è rimasto `/mnt/SD0` anche dopo i
+  tentativi di cambiarlo; la camera cambia da sola memoria principale quando
+  quella attuale viene rimossa ("After remove action" nel registro).
   La connessione riporta i moduli con firmware `…211210B1`, lo stesso del
   pacchetto v1.2.23.
 - **Conclusione (corretta dopo la prova APK):** `storage_loc` sceglie dove
