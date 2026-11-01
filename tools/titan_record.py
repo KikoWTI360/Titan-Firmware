@@ -20,20 +20,25 @@ profiles/titan.profile.json, dove sono stati catturati in rete il 27/09:
 Se lo interrompi con Ctrl-C durante la registrazione, ferma la registrazione e
 chiude la sessione prima di uscire.
 
---ssd aggiunge "storage_loc": 1 all'origine, come nel template GSV del firmware
-custom (cfg/vid_customer.json): chiede di salvare gli originali sull'archivio
-principale (SSD) invece che sulle SD dei moduli. Senza, la camera vuole le SD
-nei moduli: senza schede risponde -310 "module no sdcard" (camera di test, 01/11).
+--ssd = "storage_loc": 0 a 30000 kbit/s, esattamente come l'APK dedicato
+(registro della camera, 01/11). Con questi valori la camera salva gli 8
+origin_N.mp4 a piena risoluzione + pro.prj sulla MEMORIA PRINCIPALE (SD0 o SSD,
+quella scelta nel menu) invece che sulle SD dei moduli: verificato il 01/11,
+cartella VID_20261101_195955 sulla SD0 con origin_1..8 (50-57 MB ciascuno, ~15 s).
+Perché vada sull'SSD, l'SSD deve essere la memoria principale: controlla con
+--stato che save_path sia /mnt/udisk1.
 
-Con --storage-loc N si prova un valore qualunque: sulla camera di test anche
-storage_loc=1 è stato rifiutato con -310 (01/11), quindi il significato dei
-valori è ancora da scoprire. --stato non registra: stampa lo stato della camera
+Valori di storage_loc visti finora (camera di test, firmware v1.2.23, 01/11):
+  assente  origini sulle SD dei moduli, lrv/preview/pro.prj sulla principale
+  0        origini + pro.prj sulla memoria principale (APK dedicato, 30000 kbit/s)
+  1        moduli 0 MB, principale ~31 MB: la piena risoluzione va persa
+Senza SD nei moduli, senza storage_loc la camera risponde -310 "module no
+sdcard"; con storage_loc 0 è ancora da provare.
+
+--storage-loc N prova un valore qualunque. --bitrate N cambia il bitrate
+dell'origine (kbit/s); con --ssd il default è 30000 come l'APK, altrimenti
+180000 come l'app Insta360. --stato non registra: stampa lo stato della camera
 (memorie elencate, save_path) e il percorso di salvataggio.
-
---bitrate N cambia il bitrate dell'origine (kbit/s). L'APK dedicato manda
-30000 con storage_loc esplicito (registro della camera, 01/11): con
-storage_loc=1 la piena risoluzione deve passare via USB al corpo principale,
-e 8 x 180 Mbit/s potrebbero essere troppi.
 
 Uso:   python3 tools/titan_record.py 192.168.1.5 [--secondi 15] [--storage-loc N | --ssd] [--bitrate N] [--stato]
 Prima chiudi l'app sul tablet: la camera accetta un solo client alla volta.
@@ -207,18 +212,20 @@ def main(argv=None):
     ap.add_argument("host", help="IP della camera, es. 192.168.1.5")
     ap.add_argument("--secondi", type=int, default=15, help="durata (default 15)")
     ap.add_argument("--porta", type=int, default=20000)
-    ap.add_argument("--ssd", action="store_true", help="scorciatoia per --storage-loc 1")
+    ap.add_argument("--ssd", action="store_true", help="piena risoluzione sulla memoria principale: storage_loc 0 a 30000 kbit/s, come l'APK dedicato")
     ap.add_argument("--storage-loc", type=int, default=None,
-                    help="aggiunge storage_loc=N all'origine (il significato dei valori è da scoprire)")
+                    help="aggiunge storage_loc=N all'origine (0 = origini sulla memoria principale, 1 = origini perse)")
     ap.add_argument("--bitrate", type=int, default=None,
                     help="bitrate dell'origine in kbit/s (default 180000, come l'app Insta360; l'APK dedicato usa 30000)")
     ap.add_argument("--stato", action="store_true",
                     help="non registra: stampa lo stato della camera e il percorso di salvataggio")
     args = ap.parse_args(argv)
     start_body = json.loads(json.dumps(START_BODY))
+    if args.ssd and args.bitrate is None:
+        args.bitrate = 30000
     if args.bitrate is not None:
         start_body["parameters"]["origin"]["bitrate"] = args.bitrate
-    loc = 1 if args.ssd and args.storage_loc is None else args.storage_loc
+    loc = 0 if args.ssd and args.storage_loc is None else args.storage_loc
     if loc is not None:
         start_body["parameters"]["origin"]["storage_loc"] = loc
 
@@ -287,7 +294,7 @@ def main(argv=None):
             reply = cam.command(start_body, timeout=15)
         except RuntimeError as ex:
             if "no sdcard" in str(ex) and loc is None:
-                raise RuntimeError(f"{ex}\n   i moduli non hanno le SD: prova a indicare la destinazione con --storage-loc N")
+                raise RuntimeError(f"{ex}\n   i moduli non hanno le SD: prova --ssd (storage_loc 0, origini sulla memoria principale)")
             raise
         started = True
         record_url = find_key(reply, "_recordUrl")
