@@ -178,6 +178,17 @@ adb shell 'for f in <cartella>/*; do /usr/local/bin/python3.6 /tmp/elf_probe.py 
     un'altra strada (ipotesi: rete Ethernet interna). `titan_record.py` ora
     misura i byte ricevuti per interfaccia durante la registrazione. Se è un
     collegamento gigabit, il tetto pratico è ~110 MB/s in totale.
+  - Rete (01/11): `eth0` (1000 Mb/s) porta solo al router e al Mac, `wlan0`
+    è l'AP della camera, `l4tbr0`/`usb0` la porta USB "dispositivo" della
+    Jetson; durante una ripresa a 180 (1 GB sull'SSD) nessuna interfaccia ha
+    ricevuto nemmeno 1 MB. **I flussi non passano dalla rete.** Ipotesi: i
+    moduli si collegano ai due hub USB3 (8 porte) solo durante la
+    registrazione; `titan_record.py` ora fa `lsusb -t` a metà ripresa.
+  - **Queste misure sono in una stanza in penombra: non valgono per la
+    produzione.** La prova vera è `tools/titan_bitrate_test.py`, all'aperto e
+    in movimento: serie di tetti (default 180/140/100/60/30), analisi sulla
+    camera di ogni ripresa (fotogrammi persi, Mbit/s reali per lente, lenti al
+    tetto, USB, temperatura), raccomandazione e rapporto in `prove-bitrate/`.
   - Da fare: una prova in movimento a 180 (la richiesta sale) controllando che
     i fotogrammi restino uguali su tutte le lenti; altrimenti tetto 100.
 - **Conclusione (corretta dopo la prova APK):** `storage_loc` sceglie dove

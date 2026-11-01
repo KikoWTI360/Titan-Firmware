@@ -207,6 +207,24 @@ def net_rx_adb():
     return rx
 
 
+def usb_snapshot():
+    """lsusb -t sulla camera DURANTE la registrazione.
+
+    A camera ferma sull'USB c'è solo l'SSD e due hub USB3 da 4 porte vuoti
+    (01/11): 8 porte, una per modulo. Se i moduli si collegano solo mentre
+    registrano, qui compaiono, con la loro velocità.
+    """
+    if not shutil.which("adb"):
+        return
+    try:
+        out = subprocess.run(["adb", "shell", "lsusb -t"], capture_output=True,
+                             text=True, timeout=15).stdout.replace("\r", "").rstrip()
+    except Exception:
+        return
+    print("   [USB durante la registrazione: lsusb -t]")
+    for line in out.splitlines():
+        print(f"   [usb] {line}")
+
 def net_report(before, after, seconds):
     rows = []
     for name in sorted(set(before) & set(after)):
@@ -351,9 +369,14 @@ def main(argv=None):
 
         print("== 3/5 Registrazione in corso")
         end = time.monotonic() + args.secondi
+        usb_at = time.monotonic() + min(5, args.secondi / 2)
+        usb_done = False
         while time.monotonic() < end:
             if cam.silence() > 8:
                 print("ATTENZIONE: nessuna risposta allo stato da oltre 8 s, la sessione rischia di cadere")
+            if not usb_done and time.monotonic() >= usb_at:
+                usb_done = True
+                usb_snapshot()
             time.sleep(1)
 
         print("== 4/5 Stop (la camera chiude i file: di solito ~6 s, a volte di più)")

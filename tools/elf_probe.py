@@ -29,6 +29,12 @@ anche su macOS). Sottocomandi:
       (ftyp/moov/mdat), entropia a blocchi (per capire se e' cifrato tutto o
       solo una parte).
 
+  mp4json <file> [<file> ...]
+      Una riga JSON per file con i numeri della codifica: dimensione,
+      risoluzione, fotogrammi, fotogrammi chiave, dimensioni medie, intervallo
+      nominale tra fotogrammi, salti (fotogrammi persi) e durata dell'ultimo
+      fotogramma. La usa tools/titan_bitrate_test.py, sulla camera.
+
 Uso tipico:
     python3 tools/elf_probe.py deps extracted/titan_update
     python3 tools/elf_probe.py imports extracted/titan_update/bin/camerad
@@ -433,6 +439,62 @@ def mp4_frame_stats(moov_data):
     return None
 
 
+def mp4_summary(path):
+    """I numeri della codifica di un MP4, come dizionario (per mp4json)."""
+    out = {"path": path}
+    try:
+        size = os.path.getsize(path)
+        out["size"] = size
+        with open(path, "rb") as f:
+            boxes = mp4_top_boxes(f, size)
+            moov = next((b for b in boxes if b[0] == "moov"), None)
+            if not moov or moov[2] > 64 * 1024 * 1024:
+                out["error"] = "moov assente: file non chiuso?"
+                return out
+            f.seek(moov[1])
+            moov_data = f.read(moov[2])
+        mdat = sum(b[2] for b in boxes if b[0] == "mdat")
+        info = mp4_video_info(moov_data, mdat)
+        if info:
+            out["w"], out["h"], out["seconds"] = info[0], info[1], info[2]
+        stats = mp4_frame_stats(moov_data)
+        if not stats:
+            out["error"] = "traccia video non trovata"
+            return out
+        n, nk, sizes, keys, timing = stats
+        out["frames"], out["keys"] = n, nk
+        out["video_bytes"] = sum(sizes)
+        key_sizes = [sizes[i] for i in keys if i < n]
+        other = [sizes[i] for i in range(n) if i not in keys]
+        out["key_avg"] = sum(key_sizes) / len(key_sizes) if key_sizes else None
+        out["other_avg"] = sum(other) / len(other) if other else None
+        out["max_frame"] = max(sizes) if sizes else None
+        ts, runs = timing["timescale"], timing["stts"]
+        if ts and runs:
+            nominal = max(runs, key=lambda r: r[0])[1]
+            out["nominal_ms"] = nominal * 1000 / ts
+            out["last_ms"] = runs[-1][1] * 1000 / ts
+            # Fotogrammi che durano piu' di 1,5 volte il nominale = mancano
+            # fotogrammi prima del successivo. L'ultimo non conta (dura fino allo stop).
+            gaps = missing = 0
+            for i, (count, delta) in enumerate(runs):
+                if i == len(runs) - 1:
+                    count -= 1
+                if count > 0 and delta > 1.5 * nominal:
+                    gaps += count
+                    missing += count * (round(delta / nominal) - 1)
+            out["gaps"], out["missing"] = gaps, missing
+    except Exception as ex:
+        out["error"] = "%s: %s" % (type(ex).__name__, ex)
+    return out
+
+
+def cmd_mp4json(paths):
+    import json
+    for path in paths:
+        print(json.dumps(mp4_summary(path)), flush=True)
+
+
 def cmd_file(path):
     size = os.path.getsize(path)
     with open(path, "rb") as f:
@@ -539,6 +601,10 @@ def main(argv):
             cmd_symbols(argv[2], argv[3] if len(argv) > 3 else None)
         elif cmd == "file":
             cmd_file(argv[2])
+        elif cmd == "mp4json":
+            if len(argv) < 3:
+                raise IndexError
+            cmd_mp4json(argv[2:])
         else:
             print(__doc__)
             return 1

@@ -61,3 +61,6 @@ Thumbs.db
 *~
 .idea/
 .vscode/
+
+# Rapporti delle prove di bitrate (tools/titan_bitrate_test.py)
+prove-bitrate/
