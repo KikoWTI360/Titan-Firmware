@@ -47,10 +47,17 @@ non negoziabili:
   fisheye, estrinseci/offset delle 8 lenti). C'è anche un "_lrv.mp4" (preview
   low-res) che puoi ignorare.
 - Il PERNO della fattibilità è PARSARE pro.prj: lì c'è la calibrazione che fa la
-  qualità. Primo task di R&D: procurarsi un pro.prj reale e reverse-engineerarne
-  il formato (potrebbe essere JSON/XML/protobuf/binario proprietario). Finché non
-  è decodificato, lavora dietro un'interfaccia "Calibration" con un
-  provider mock, così il resto della pipeline avanza.
+  qualità. VERIFICATO IL 01/11 su una ripresa reale: pro.prj è XML IN CHIARO
+  (~5 KB, inizia con <?xml version="1.0" encoding="UTF-8"?><project><offset>).
+  Il formato quindi si legge con un parser XML; il lavoro di R&D è capire il
+  significato dei campi (in particolare <offset>, la stringa di calibrazione
+  delle lenti). Chiedi all'utente un pro.prj reale. Finché il significato dei
+  campi non è chiaro, lavora dietro un'interfaccia "Calibration" con un provider
+  mock, così il resto della pipeline avanza.
+- Nella cartella di una ripresa sulla memoria principale (SD0 o SSD) ci sono
+  anche origin_N_lrv.mp4 (versioni a bassa risoluzione di ogni lente, MP4
+  H.264 standard, non cifrati) e preview.mp4: utili per provare la pipeline
+  senza spostare i file a piena risoluzione.
 - Il GPS NON influenza la geometria dello stitching: la geometria dipende da
   calibrazione (pro.prj) + IMU (orientamento/stabilizzazione). Il GPS è solo
   metadato (CAMM). Quindi i worker fanno PIXEL; la CAMM/GPS si scrive in fase di

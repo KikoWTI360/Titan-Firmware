@@ -290,27 +290,82 @@ def shannon(block):
     return -sum((c / n) * math.log2(c / n) for c in counts if c)
 
 
+# Strutture che compaiono solo in un MP4 cifrato con lo standard CENC/CBCS: il
+# contenitore resta valido, ma la traccia diventa 'encv'/'enca' con lo schema in
+# 'sinf'/'schm'/'tenc', e le chiavi o i loro riferimenti in 'pssh'/'senc'.
+CRYPTO_BOXES = (b"encv", b"enca", b"sinf", b"schm", b"tenc", b"pssh", b"senc")
+CODEC_TAGS = (b"avc1", b"avc3", b"hvc1", b"hev1", b"mp4v", b"mp4a")
+
+
+def mp4_top_boxes(f, size):
+    """Le strutture di primo livello di un MP4: [(tipo, offset, dimensione)].
+
+    Si salta da una struttura all'altra leggendo solo le intestazioni, quindi va
+    bene anche per file da molti GB. Si ferma su un'intestazione che non è
+    quella di un MP4.
+    """
+    boxes, pos = [], 0
+    while pos + 8 <= size and len(boxes) < 1000:
+        f.seek(pos)
+        hdr = f.read(16)
+        bsize, btype = struct.unpack(">I4s", hdr[:8])
+        if bsize == 1 and len(hdr) >= 16:
+            bsize = struct.unpack(">Q", hdr[8:16])[0]
+        elif bsize == 0:
+            bsize = size - pos
+        if bsize < 8 or not all(32 <= c < 127 for c in btype):
+            break
+        boxes.append((btype.decode("ascii"), pos, bsize))
+        pos += bsize
+    return boxes
+
+
 def cmd_file(path):
+    size = os.path.getsize(path)
     with open(path, "rb") as f:
         head = f.read(64)
         f.seek(0)
         first = f.read(4096)
-        f.seek(os.path.getsize(path) // 2)
+        f.seek(size // 2)
         mid = f.read(4096)
-    print(f"File: {path}  ({os.path.getsize(path)} byte)")
+        boxes = mp4_top_boxes(f, size) if first[4:8] == b"ftyp" else []
+        moov = next((b for b in boxes if b[0] == "moov"), None)
+        moov_data = b""
+        if moov and moov[2] <= 64 * 1024 * 1024:
+            f.seek(moov[1])
+            moov_data = f.read(moov[2])
+    print(f"File: {path}  ({size} byte)")
     print("Primi 64 byte (hex):")
     for i in range(0, len(head), 16):
         chunk = head[i:i + 16]
         hexs = " ".join(f"{b:02x}" for b in chunk)
         asc = "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)
         print(f"  {i:04x}  {hexs:<48}  {asc}")
-    # box MP4 in chiaro?
-    boxes = [b"ftyp", b"moov", b"mdat", b"free", b"mvhd", b"trak"]
-    present = [b.decode() for b in boxes if b in first or b in mid]
-    print(f"\nBox MP4 in chiaro trovati: {present if present else 'NESSUNO'}")
-    print(f"Entropia primo blocco: {shannon(first):.2f}/8   meta' file: {shannon(mid):.2f}/8")
-    print("  (vicino a 8.0 = dati casuali/cifrati o gia' compressi; un MP4 in chiaro")
-    print("   mostra comunque 'ftyp'/'moov' leggibili all'inizio)")
+    print(f"\nEntropia primo blocco: {shannon(first):.2f}/8   meta' file: {shannon(mid):.2f}/8")
+
+    if not boxes:
+        print("Non è un MP4 (nessuna struttura 'ftyp' all'inizio).")
+        print("  (entropia vicina a 8.0 = dati casuali, cifrati o compressi)")
+        return
+    print("Strutture MP4 di primo livello:")
+    for btype, off, bsize in boxes:
+        print(f"  {btype}  offset {off:>12}  {bsize:>14} byte")
+    if boxes[-1][1] + boxes[-1][2] < size:
+        print(f"  (dopo l'ultima struttura restano {size - boxes[-1][1] - boxes[-1][2]} byte non interpretabili)")
+    if not moov:
+        print("Verdetto: MP4 SENZA 'moov' (indice dei fotogrammi): file incompleto o "
+              "registrazione non chiusa, non leggibile così com'è.")
+        return
+    codecs = [t.decode() for t in CODEC_TAGS if t in moov_data]
+    crypto = [t.decode() for t in CRYPTO_BOXES if t in moov_data]
+    print(f"Codec dichiarati nell'indice: {', '.join(codecs) or 'nessuno riconosciuto'}")
+    print(f"Strutture di cifratura (CENC): {', '.join(crypto) or 'nessuna'}")
+    if crypto:
+        print("Verdetto: MP4 CIFRATO con lo standard CENC: il contenitore è leggibile, "
+              "i fotogrammi no senza la chiave.")
+    else:
+        print("Verdetto: MP4 standard, nessun segno di cifratura. L'entropia alta dei dati "
+              "è quella del video compresso. Prova definitiva: aprirlo con un lettore.")
 
 
 def main(argv):

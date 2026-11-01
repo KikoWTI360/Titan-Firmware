@@ -111,6 +111,22 @@ adb shell 'for f in <cartella>/*; do /usr/local/bin/python3.6 /tmp/elf_probe.py 
   scrivere, ma niente li riceve al loro posto. Togliere il controllo delle SD da
   `camerad` farebbe partire registrazioni senza file a piena risoluzione: il
   controllo protegge proprio da questo.
+- **I file scritti sull'SSD non sono cifrati** (prova A, analisi sulla camera
+  con `elf_probe.py file`): `origin_N_lrv.mp4` e `preview.mp4` sono MP4 standard
+  (`ftyp isom`, brand `avc1`/`mp41`, cioè H.264) con `mdat` leggibile; l'entropia
+  alta a metà file è quella del video compresso. `pro.prj` è **XML in chiaro**
+  (`<?xml ...><project><offset>...`).
+- **Quindi la build v1.2.23 non cifra e non scrive la piena risoluzione
+  sull'SSD.** La cifratura e la registrazione completa su SSD che ricordiamo
+  appartengono, con ogni probabilità, a un'altra build (candidato:
+  `UL2GSV_v17.zip` nel Drive). I file a piena risoluzione sulle SD dei moduli
+  vengono stitchati ogni giorno con lo Stitcher Insta360, quindi non sono
+  cifrati nemmeno loro.
+- `elf_probe.py file` ora legge tutte le strutture di primo livello di un MP4
+  (anche `moov`, che le camere scrivono in fondo) e cerca i segni della
+  cifratura standard dentro un MP4 valido (CENC: `encv`, `sinf`, `schm`,
+  `tenc`, `pssh`, `senc`). Verificato con ffmpeg su un MP4 normale, uno con
+  `moov` all'inizio, uno cifrato CENC e uno troncato.
 - Da verificare: `camera._change_module_usb_mode` (in `config.py`) cambia la
   modalità USB dei moduli; se esistesse una modalità in cui i moduli inviano i
   file a piena risoluzione al corpo principale, insieme a `storage_loc: 1`
