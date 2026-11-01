@@ -134,10 +134,18 @@ adb shell 'for f in <cartella>/*; do /usr/local/bin/python3.6 /tmp/elf_probe.py 
   quella attuale viene rimossa ("After remove action" nel registro).
   La connessione riporta i moduli con firmware `…211210B1`, lo stesso del
   pacchetto v1.2.23.
+- **Prova D — PIENA RISOLUZIONE SULL'SSD: RIUSCITA** (01/11 ore 20:15).
+  SD0 estratta a camera accesa: `save_path` passa da solo a `/mnt/udisk1`.
+  `titan_record.py --ssd` (`storage_loc: 0`, 30000 kbit/s), 8 SD ancora nei
+  moduli: `/mnt/udisk1/VID_20261101_201513` contiene gli 8 `origin_N.mp4`
+  (46-56 MB ciascuno) + `pro.prj`, 404 MB in 15 s; `df` sull'SSD +404 MiB, SD
+  dei moduli invariate (0 MB scritti). SSD da ~1 TB (913973 MiB liberi).
+  Procedura: SSD collegato, **SD0 estratta**, verificare `save_path` con
+  `--stato`, registrare con `storage_loc: 0`.
 - **Conclusione (corretta dopo la prova APK):** `storage_loc` sceglie dove
   vanno gli originali: assente = SD dei moduli, `0` = memoria principale,
-  `1` = da nessuna parte. Da verificare: (1) che con l'SSD come principale gli
-  `origin_N.mp4` vadano sull'SSD; (2) ~~risoluzione e cifratura~~ verificato:
+  `1` = da nessuna parte. Da verificare: (1) ~~SSD come principale~~
+  verificato, prova D; (2) ~~risoluzione e cifratura~~ verificato:
   5280x2972 in chiaro; (3) se con `storage_loc: 0` il
   controllo `-310` delle SD dei moduli viene saltato; (4) il bitrate massimo
   che il trasferimento moduli → corpo principale regge (l'APK usa 30000,
