@@ -23,8 +23,10 @@ fail() { echo "ERRORE: $*" >&2; exit 1; }
 
 SERIAL=$(adb get-serialno | tr -d '\r')
 [ -n "$SERIAL" ] && [ "$SERIAL" != "unknown" ] || fail "nessuna camera collegata via adb"
-ORIG="$WORK/bootanimation.$SERIAL.orig"
-NEW="$WORK/bootanimation.$SERIAL.wti"
+# Collegata in rete il seriale è "IP:5555": niente ':' o '/' nei nomi dei file.
+TAG=$(printf '%s' "$SERIAL" | tr ':/' '__')
+ORIG="$WORK/bootanimation.$TAG.orig"
+NEW="$WORK/bootanimation.$TAG.wti"
 
 # Se il mod è già stato applicato, l'originale vero è il .orig sulla camera.
 SRC=$DEV

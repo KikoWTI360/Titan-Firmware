@@ -18,8 +18,21 @@ per il recupero da brick.
 
 ### Via A — adb (confermata: `adbd` è nei servizi di avvio)
 
-Il firmware avvia `service adbd /usr/local/bin/adbd` (classe `base`, `critical`),
-quindi la camera espone un'interfaccia adb su USB.
+Il firmware avvia `service adbd /usr/local/bin/adbd` (classe `base`, `critical`).
+
+**Verificato sulla camera di test (01/11): adb funziona in rete, non via USB.**
+Con la camera in rete risponde sulla porta **5555** (adb) e sulla **22** (SSH);
+la 23 (telnet) è chiusa. Via USB `adb devices` non la vede. Mac e camera devono
+stare sulla stessa rete; per trovare l'IP della camera si cerca chi risponde
+sulla porta 20000 (OSC):
+```bash
+for NET in $(ifconfig | awk '/inet 192\.168\./{print $2}' | cut -d. -f1-3 | sort -u); do echo "cerco su $NET.x"; ( for i in $(seq 1 254); do (nc -z -G 1 $NET.$i 20000 2>/dev/null && echo "camera trovata: $NET.$i") & done; wait ); done
+```
+poi:
+```bash
+adb connect <IP-camera>:5555
+```
+I passi qui sotto via USB restano come alternativa se in rete non risponde.
 
 1. Installa adb sul Mac: `brew install android-platform-tools`.
 2. Collega la camera (corpo principale) al Mac via USB e accendila.
