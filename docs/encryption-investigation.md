@@ -54,6 +54,33 @@ USB_CMD_ENCRYPT_FAIL        (codice di ERRORE, non un comando)
 - (b) la verifica di un **pacchetto di aggiornamento** cifrato per i moduli —
   nel qual caso i file video **non sono cifrati da questo meccanismo**.
 
+## Registrazione di prova da terminale (01/11)
+
+Con l'accesso adb e l'SSD montato in `/mnt/udisk1` (USB 3.0), la prova si fa
+senza l'app:
+
+```bash
+python3 tools/titan_record.py <IP-camera> --secondi 15
+```
+
+Lo script usa gli stessi comandi dell'app Insta360 (corpi catturati in rete il
+27/09, da `street-view-suite/profiles/titan.profile.json`): apre la sessione,
+avvia la registrazione (h264 5280×2972, 180000 kbps, 5 fps, solo originali),
+tiene viva la sessione, ferma, aspetta la chiusura dei file e chiude la
+sessione. La risposta all'avvio contiene `_recordUrl`, **la cartella in cui la
+camera scrive**: dice subito se il firmware custom scrive sull'SSD. Alla fine
+elenca la cartella via adb. Prima va chiusa l'app sul tablet (sessione
+esclusiva). Testato contro la Titan simulata di street-view-suite
+(`fake_titan.py`): sessione tenuta oltre i 10 s, Ctrl-C che ferma la
+registrazione, secondo client rifiutato senza disturbare il primo.
+
+Impronta dei file direttamente sulla camera, senza trasferirli (Python 3.6 è
+già sulla camera):
+```bash
+adb push tools/elf_probe.py /tmp/elf_probe.py
+adb shell 'for f in <cartella>/*; do /usr/local/bin/python3.6 /tmp/elf_probe.py file "$f"; echo; done; rm /tmp/elf_probe.py'
+```
+
 ## I due test che decidono la strada
 
 ### Test 1 — Impronta di un file registrato (il più importante)

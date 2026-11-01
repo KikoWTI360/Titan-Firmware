@@ -36,4 +36,4 @@ applica uno script, così è ripetibile su ogni unità della flotta.
 | # | Mod | Stato |
 |---|-----|-------|
 | 01 | [Bitrate di registrazione GSV](01-bitrate-gsv/README.md) | Pronto da provare su unità sacrificabile |
-| 02 | [Logo WTI360 all'avvio](02-boot-logo/README.md) | Strumento testato; da eseguire sul `bootanimation` vero |
+| 02 | [Logo WTI360 all'avvio](02-boot-logo/README.md) | **Funziona** sulla camera di test (01/11) |

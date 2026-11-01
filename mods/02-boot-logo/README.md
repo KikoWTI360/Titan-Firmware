@@ -1,8 +1,8 @@
 # Mod 02 — Logo WTI360 all'avvio della camera
 
-**Stato:** strumenti testati. Sulla camera di test (01/11) installata la prima
-versione, che sostituiva solo `prologo`: nessun effetto visibile. L'immagine
-giusta è `bootLogo` (vedi sotto); `deploy_logo.sh` ora le sostituisce entrambe.
+**Stato:** funziona. Sulla camera di test (01/11) all'avvio compare il logo
+WTI360 a schermo intero. La prima versione sostituiva solo `prologo`, senza
+effetto visibile: l'immagine giusta è `bootLogo` (vedi sotto).
 
 ## Obiettivo
 
@@ -139,4 +139,4 @@ finisce di avviarsi**.
 | Data | Unità | Cosa | Esito / note |
 |------|-------|------|--------------|
 | 01/11 | camera di test (192.168.1.5) | solo `prologo` (94×32) | installato e verificato (MD5), all'avvio ancora "Insta360 Titan": `prologo` non è la schermata d'avvio della Titan |
-| 01/11 | camera di test | `bootLogo` (128×64, logo B) + `prologo` | da provare |
+| 01/11 | camera di test | `bootLogo` (128×64, logo B) + `prologo` | **riuscito**: all'avvio compare "WTI 360 / WORLD TRAVEL IN 360" (foto) |
