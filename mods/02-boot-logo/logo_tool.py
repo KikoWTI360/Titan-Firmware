@@ -105,8 +105,10 @@ def ascii_art(rows):
 def find_symbol(path, name):
     elf = Elf(path)
     syms = elf.symbols()
+    # Le variabili `static` del C++ hanno il nome codificato: _ZL<lunghezza><nome>
+    wanted = {name, f"_ZL{len(name)}{name}"}
     for s in syms:
-        if s["name"] == name and s["file_offset"] is not None:
+        if s["name"] in wanted and s["file_offset"] is not None:
             return elf, s
     near = sorted({s["name"] for s in syms if re.search(r"logo|icon|boot", s["name"], re.I)})
     msg = f"simbolo '{name}' non trovato in {path}."

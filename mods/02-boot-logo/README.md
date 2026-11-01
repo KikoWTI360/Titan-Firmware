@@ -19,8 +19,14 @@ il logo WTI360.
   prologo_17_16_94_32   →  94×32 pixel, disegnato a x=17, y=16
   ```
 
+  Il binario è C++ e il logo è una variabile `static`, quindi nella tabella dei
+  simboli il nome compare codificato come `_ZL19prologo_17_16_94_32`. Lo strumento
+  lo riconosce da solo.
 - Lo schermo è **128×64 monocromatico** (c'è un'icona `reboot_128_64` a schermo
   intero). Ogni pixel è acceso o spento: niente grigi né colori.
+- Il controller dello schermo è un **SSD1306** (funzione
+  `oled_module::ssd1306_disp_icon`), quindi la codifica attesa è `page-lsb`, il
+  suo formato nativo. `show` serve a confermarlo.
 - Il binario ha la tabella dei simboli, quindi si sa esattamente dove sta il
   bitmap e quanti byte occupa: si riscrivono **solo quei byte**, il resto del
   file resta identico.
