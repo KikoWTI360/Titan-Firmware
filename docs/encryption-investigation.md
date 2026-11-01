@@ -151,6 +151,29 @@ adb shell 'for f in <cartella>/*; do /usr/local/bin/python3.6 /tmp/elf_probe.py 
   binari serve** per registrare la piena risoluzione solo su SSD. Resta da
   scegliere il bitrate (30000 è quello dell'APK; vedi il calcolo dei bit per
   pixel e la scala 60000/100000/180000).
+- **Scala di bitrate su SSD, senza SD** (01/11 20:21-20:27, camera ferma,
+  stessa scena). Mbit/s reali per lente = dimensione file / 14,0 s (70
+  fotogrammi a 5 fps; `elf_probe.py file`):
+
+  | tetto | L1 | L2 | L3 | L4 | L5 | L6 | L7 | L8 | totale SSD |
+  |---|---|---|---|---|---|---|---|---|---|
+  | 30 (71 fot., 14,2 s) | 31 | 31 | 30 | 31 | 31 | 31 | 30 | 32 | 31 MB/s |
+  | 60 | 60 | 57 | 56 | 46 | 45 | 55 | 61 | 61 | 55 MB/s |
+  | 100 | 93 | 74 | 67 | 47 | 47 | 63 | 92 | 98 | 73 MB/s |
+  | 180 | 101 | 76 | 68 | 48 | 48 | 64 | 110 | 126 | 80 MB/s |
+
+  - **Nessun fotogramma perso**: in ogni ripresa tutte le 8 lenti hanno lo
+    stesso numero di fotogrammi (70, o 71 a 30), anche a 80 MB/s in totale.
+  - Codifica a tetto (VBR): a 180 nessuna lente arriva al tetto, cioè il
+    codificatore lavora libero = stessa qualità della modalità SD dei moduli.
+    A 100 sono limitate solo L1, L7, L8 (-8/-22%); a 60 sei lenti; a 30 tutte.
+  - Un fotogramma chiave ogni 5 (uno al secondo).
+  - **L8 riporta 15,9-16,0 s invece di 14,0 con gli stessi 70 fotogrammi**, in
+    tutte e quattro le riprese (anche a 30): non dipende dal bitrate. Da
+    leggere con `elf_probe.py file` ("Tempi dei fotogrammi") per capire se è
+    l'ultimo fotogramma allungato o un salto di tempo.
+  - Da fare: una prova in movimento a 180 (la richiesta sale) controllando che
+    i fotogrammi restino uguali su tutte le lenti; altrimenti tetto 100.
 - **Conclusione (corretta dopo la prova APK):** `storage_loc` sceglie dove
   vanno gli originali: assente = SD dei moduli, `0` = memoria principale,
   `1` = da nessuna parte. Da verificare: (1) ~~SSD come principale~~

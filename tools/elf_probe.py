@@ -405,7 +405,31 @@ def mp4_frame_stats(moov_data):
             keys = set(i - 1 for i in struct.unpack(">%dI" % n, moov_data[stss[0] + 8:stss[0] + 8 + 4 * n]))
         else:
             keys = set(range(count))
-        return count, len(keys), sizes, keys
+        # Tempi: 'stts' = coppie (quanti fotogrammi, durata di ciascuno) nella
+        # scala di 'mdhd'; 'elst' = eventuale ritardo/taglio all'inizio della traccia.
+        timing = {"timescale": None, "stts": [], "elst": []}
+        mdhd = child(mdia[0], mdia[1], "mdhd")
+        if mdhd:
+            off = mdhd[0] + (20 if moov_data[mdhd[0]] == 1 else 12)
+            timing["timescale"] = struct.unpack(">I", moov_data[off:off + 4])[0]
+        stts = child(stbl[0], stbl[1], "stts")
+        if stts:
+            n = struct.unpack(">I", moov_data[stts[0] + 4:stts[0] + 8])[0]
+            vals = struct.unpack(">%dI" % (2 * n), moov_data[stts[0] + 8:stts[0] + 8 + 8 * n])
+            timing["stts"] = list(zip(vals[0::2], vals[1::2]))
+        edts = child(s, e, "edts")
+        elst = edts and child(edts[0], edts[1], "elst")
+        if elst:
+            v1 = moov_data[elst[0]] == 1
+            n = struct.unpack(">I", moov_data[elst[0] + 4:elst[0] + 8])[0]
+            pos = elst[0] + 8
+            for _ in range(n):
+                if v1:
+                    seg, mt = struct.unpack(">Qq", moov_data[pos:pos + 16]); pos += 20
+                else:
+                    seg, mt = struct.unpack(">Ii", moov_data[pos:pos + 8]); pos += 12
+                timing["elst"].append((seg, mt))
+        return count, len(keys), sizes, keys, timing
     return None
 
 
@@ -463,7 +487,7 @@ def cmd_file(path):
         print(f"Video: {', '.join(parts)}")
         stats = mp4_frame_stats(moov_data)
         if stats:
-            n, nk, sizes, keys = stats
+            n, nk, sizes, keys, timing = stats
             line = f"Fotogrammi: {n}"
             if secs:
                 line += f" ({n / secs:.2f} al secondo)"
@@ -479,6 +503,17 @@ def cmd_file(path):
             desc("chiave", [sizes[i] for i in sorted(keys) if i < n])
             desc("altri", [sizes[i] for i in range(n) if i not in keys])
             desc("tutti", sizes)
+            ts = timing["timescale"]
+            if ts and timing["stts"]:
+                runs = ", ".join(f"{c} x {d * 1000 / ts:.0f} ms" for c, d in timing["stts"][:6])
+                if len(timing["stts"]) > 6:
+                    runs += f", ... ({len(timing['stts'])} gruppi)"
+                print(f"Tempi dei fotogrammi: {runs}")
+            for seg, mt in timing["elst"]:
+                if mt == -1:
+                    print(f"  elst: vuoto iniziale (ritardo) di {seg} unità del filmato")
+                elif mt and ts:
+                    print(f"  elst: la presentazione parte da {mt * 1000 / ts:.0f} ms del tempo interno (normale con i B-frame)")
     print(f"Strutture di cifratura (CENC): {', '.join(crypto) or 'nessuna'}")
     if crypto:
         print("Verdetto: MP4 CIFRATO con lo standard CENC: il contenitore è leggibile, "
