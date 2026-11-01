@@ -92,6 +92,41 @@ Regole:
 Esito per modalità di guasto (§8): qualunque cosa succeda a tablet/hub/USB, il
 u-blox e il logger restano accesi e la traccia continua.
 
+### 3.1 Topologia completa del rig — l'hub resta (deciso 01/11)
+
+Il tablet ha una sola porta USB-C e deve ricevere **due** collegamenti dati: il
+u-blox (traccia GNSS) e la Titan (controllo e preview via rete su USB, al posto
+di Ethernet + router). L'hub quindi **resta**, ma con un ruolo ridotto:
+**concentratore di dati e ricarica del tablet, nient'altro**. Non alimenta
+nessun dispositivo critico.
+
+```
+Powerbox
+   ├── 12V → caricatore USB-C PD (60-65 W) → hub USB-C (PD passthrough) ◄══► tablet (dati + ricarica)
+   │                                             ├── USB solo-dati ◄── ArduSimple u-blox
+   │                                             └── USB (rete su USB) ◄── Titan
+   ├── reg 5V → ArduSimple u-blox (pin 5V IN) ── PIXHAWK TX ──► Black Box logger
+   ├── reg 5V → Black Box logger (+ hold-up)
+   └── 14,4 V → Titan (alimentazione propria, non dall'USB)
+```
+
+Rispetto al rig di oggi (`RTK_GNSS.md`, "Powering the rig") spariscono
+l'adattatore Ethernet e il router, e il u-blox smette di prendere corrente
+dall'hub.
+
+Perché l'hub smette di essere un punto debole: quando non enumera più (tablet
+staccato, spento o in doze) spegne le porte downstream, ma ormai su quelle porte
+passano **solo dati**:
+- u-blox: alimentato dalla Powerbox → continua a funzionare, e il logger continua
+  a registrare;
+- Titan: alimentazione propria → continua a registrare;
+- si perde solo il real-time verso il tablet (traccia live, controllo, preview),
+  che riprende alla riconnessione.
+
+Requisito in più: nessun dispositivo auto-alimentato deve **reimmettere VBUS**
+sulle porte dell'hub (vedi sopra, backfeed). Va verificato per il u-blox e anche
+per la porta USB della Titan.
+
 ---
 
 ## 4. Architettura dei dati
