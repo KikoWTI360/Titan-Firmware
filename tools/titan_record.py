@@ -30,7 +30,12 @@ storage_loc=1 è stato rifiutato con -310 (01/11), quindi il significato dei
 valori è ancora da scoprire. --stato non registra: stampa lo stato della camera
 (memorie elencate, save_path) e il percorso di salvataggio.
 
-Uso:   python3 tools/titan_record.py 192.168.1.5 [--secondi 15] [--storage-loc N | --ssd] [--stato]
+--bitrate N cambia il bitrate dell'origine (kbit/s). L'APK dedicato manda
+30000 con storage_loc esplicito (registro della camera, 01/11): con
+storage_loc=1 la piena risoluzione deve passare via USB al corpo principale,
+e 8 x 180 Mbit/s potrebbero essere troppi.
+
+Uso:   python3 tools/titan_record.py 192.168.1.5 [--secondi 15] [--storage-loc N | --ssd] [--bitrate N] [--stato]
 Prima chiudi l'app sul tablet: la camera accetta un solo client alla volta.
 """
 
@@ -205,10 +210,14 @@ def main(argv=None):
     ap.add_argument("--ssd", action="store_true", help="scorciatoia per --storage-loc 1")
     ap.add_argument("--storage-loc", type=int, default=None,
                     help="aggiunge storage_loc=N all'origine (il significato dei valori è da scoprire)")
+    ap.add_argument("--bitrate", type=int, default=None,
+                    help="bitrate dell'origine in kbit/s (default 180000, come l'app Insta360; l'APK dedicato usa 30000)")
     ap.add_argument("--stato", action="store_true",
                     help="non registra: stampa lo stato della camera e il percorso di salvataggio")
     args = ap.parse_args(argv)
     start_body = json.loads(json.dumps(START_BODY))
+    if args.bitrate is not None:
+        start_body["parameters"]["origin"]["bitrate"] = args.bitrate
     loc = 1 if args.ssd and args.storage_loc is None else args.storage_loc
     if loc is not None:
         start_body["parameters"]["origin"]["storage_loc"] = loc
@@ -236,7 +245,10 @@ def main(argv=None):
             print(f"ERRORE: {ex}\n(se l'app sul tablet è collegata, chiudila: la camera accetta un solo client)")
             return 1
     info = find_key(reply, "sys_info") or {}
-    print(f"   sessione aperta. Seriale {info.get('sn', '?')}, firmware {find_key(reply, 'version') or '?'}")
+    # c_v = firmware dei moduli come lo riporta _indSyncState nel registro della camera
+    modules = find_key(reply, "c_v") or find_key(reply, "moduleVersion")
+    print(f"   sessione aperta. Seriale {info.get('sn', '?')}, firmware {find_key(reply, 'version') or '?'}"
+          + (f", moduli {modules}" if modules else ""))
 
     if args.stato:
         try:
@@ -269,6 +281,7 @@ def main(argv=None):
     record_url = None
     try:
         where = f"storage_loc={loc}" if loc is not None else "senza storage_loc, come l'app"
+        where += f", bitrate {start_body['parameters']['origin']['bitrate']} kbit/s"
         print(f"== 2/5 Avvio registrazione ({args.secondi} s, {where})")
         try:
             reply = cam.command(start_body, timeout=15)
