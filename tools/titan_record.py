@@ -25,7 +25,12 @@ custom (cfg/vid_customer.json): chiede di salvare gli originali sull'archivio
 principale (SSD) invece che sulle SD dei moduli. Senza, la camera vuole le SD
 nei moduli: senza schede risponde -310 "module no sdcard" (camera di test, 01/11).
 
-Uso:   python3 tools/titan_record.py 192.168.1.5 [--secondi 15] [--ssd]
+Con --storage-loc N si prova un valore qualunque: sulla camera di test anche
+storage_loc=1 è stato rifiutato con -310 (01/11), quindi il significato dei
+valori è ancora da scoprire. --stato non registra: stampa lo stato della camera
+(memorie elencate, save_path) e il percorso di salvataggio.
+
+Uso:   python3 tools/titan_record.py 192.168.1.5 [--secondi 15] [--storage-loc N | --ssd] [--stato]
 Prima chiudi l'app sul tablet: la camera accetta un solo client alla volta.
 """
 
@@ -154,12 +159,16 @@ def main(argv=None):
     ap.add_argument("host", help="IP della camera, es. 192.168.1.5")
     ap.add_argument("--secondi", type=int, default=15, help="durata (default 15)")
     ap.add_argument("--porta", type=int, default=20000)
-    ap.add_argument("--ssd", action="store_true",
-                    help="storage_loc=1: originali sull'archivio principale (SSD), non sulle SD dei moduli")
+    ap.add_argument("--ssd", action="store_true", help="scorciatoia per --storage-loc 1")
+    ap.add_argument("--storage-loc", type=int, default=None,
+                    help="aggiunge storage_loc=N all'origine (il significato dei valori è da scoprire)")
+    ap.add_argument("--stato", action="store_true",
+                    help="non registra: stampa lo stato della camera e il percorso di salvataggio")
     args = ap.parse_args(argv)
     start_body = json.loads(json.dumps(START_BODY))
-    if args.ssd:
-        start_body["parameters"]["origin"]["storage_loc"] = 1
+    loc = 1 if args.ssd and args.storage_loc is None else args.storage_loc
+    if loc is not None:
+        start_body["parameters"]["origin"]["storage_loc"] = loc
 
     cam = Titan(args.host, args.porta)
     print(f"== 1/5 Connessione a {cam.base}")
@@ -186,18 +195,35 @@ def main(argv=None):
     info = find_key(reply, "sys_info") or {}
     print(f"   sessione aperta. Seriale {info.get('sn', '?')}, firmware {find_key(reply, 'version') or '?'}")
 
+    if args.stato:
+        try:
+            print("== Stato della camera (/osc/state)")
+            print(json.dumps(cam.post("/osc/state", {}, timeout=5), indent=2, ensure_ascii=False))
+            print("== Percorso di salvataggio (camera._getStoragePath)")
+            try:
+                print(json.dumps(cam.command({"name": "camera._getStoragePath"}, timeout=10),
+                                 indent=2, ensure_ascii=False))
+            except Exception as ex:
+                print(f"   {ex}")
+        finally:
+            try:
+                cam.command({"name": "camera._disconnect"}, timeout=5)
+            except Exception:
+                print("   (sessione non chiusa esplicitamente: si libera da sola entro 10 s)")
+        return 0
+
     beat = threading.Thread(target=cam.heartbeat, daemon=True)
     beat.start()
     started = stopped = False
     record_url = None
     try:
-        where = "archivio principale (storage_loc=1)" if args.ssd else "SD dei moduli"
-        print(f"== 2/5 Avvio registrazione ({args.secondi} s, originali su: {where})")
+        where = f"storage_loc={loc}" if loc is not None else "senza storage_loc, come l'app"
+        print(f"== 2/5 Avvio registrazione ({args.secondi} s, {where})")
         try:
             reply = cam.command(start_body, timeout=15)
         except RuntimeError as ex:
-            if "no sdcard" in str(ex) and not args.ssd:
-                raise RuntimeError(f"{ex}\n   i moduli non hanno le SD: per salvare sull'SSD rilancia con --ssd")
+            if "no sdcard" in str(ex) and loc is None:
+                raise RuntimeError(f"{ex}\n   i moduli non hanno le SD: prova a indicare la destinazione con --storage-loc N")
             raise
         started = True
         record_url = find_key(reply, "_recordUrl")
