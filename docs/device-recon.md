@@ -35,7 +35,32 @@ flash del firmware custom v1.2.23. Solo letture, nessuna modifica.
 | `mmcblk0rpmb` | 4 MB | area protetta, non si legge |
 | `sda1` | 119 GB, exFAT | `/mnt/SD0`: la scheda **SD0** della camera (slot della scheda madre, dietro un lettore USB interno), usata anche per caricare il firmware |
 
-Durante la ricognizione **l'SSD non era collegato** (nessun `/mnt/udisk*`).
+Durante la prima ricognizione **l'SSD non era collegato** (nessun `/mnt/udisk*`).
+
+### SSD esterno
+
+- SanDisk Extreme SSD 1 TB, exFAT: la camera lo vede come `sdb1` e lo monta
+  da sola in **`/mnt/udisk1`**.
+- La porta dell'SSD è la porta 2 dello stesso controller USB della SD0
+  (`xhci_hcd`, 2 porte; Bus 03 = lato USB 2.0, Bus 04 = lato USB 3.0).
+- **Primo inserimento a USB 2.0** (`usb 3-2: new high-speed`, `480M`: circa
+  35-40 MB/s reali). **Cambiando cavo e verso del connettore è passato a USB
+  3.0** (`usb 4-2: new SuperSpeed`, `5000M`). La porta supporta l'USB 3: se
+  l'SSD va a 480M la causa è il cavo o il connettore.
+- Da controllare su tutta la flotta: a USB 2.0 la registrazione su SSD ha poca
+  banda (rischio di frame persi, impossibile alzare il bitrate). Verifica:
+  `adb shell 'lsusb -t'` → l'SSD deve stare su un bus a `5000M`.
+- Idea: il firmware ha già un test di velocità del disco
+  (`camera._storageSpeedTest`), che Street View Suite potrebbe lanciare nei
+  controlli prima della ripresa.
+
+### Porta USB OTG della scheda NVIDIA
+
+Nel registro di sistema la porta OTG passa in modalità dispositivo
+(`tegra-xudc-new ... device mode on`) quando è collegata a un host, ma vede solo
+un "non-standard charger": adb via USB non c'è perché nessuna funzione è
+configurata su quella porta. L'hardware per far apparire la camera come
+periferica USB (per esempio scheda di rete USB verso il tablet) quindi c'è.
 
 ## Processi
 
