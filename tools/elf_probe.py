@@ -441,4 +441,10 @@ def main(argv):
 
 
 if __name__ == "__main__":
+    # Sulla camera "adb shell" non imposta la lingua: Python 3.6 scrive in ASCII
+    # e si ferma alla prima lettera accentata. Forziamo UTF-8.
+    if (sys.stdout.encoding or "").lower().replace("-", "") != "utf8":
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8",
+                                      errors="replace", line_buffering=True)
     raise SystemExit(main(sys.argv))

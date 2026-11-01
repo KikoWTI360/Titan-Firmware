@@ -117,14 +117,18 @@ adb shell 'for f in <cartella>/*; do /usr/local/bin/python3.6 /tmp/elf_probe.py 
   - Nella cartella `/mnt/SD0/VID_20261101_195955` ci sono **tutti gli 8
     `origin_N.mp4`** (31-57 MB ciascuno, ~15 s a 30 Mbit/s) e `pro.prj` (4791
     byte); niente `lrv` né `preview.mp4`.
+  - `elf_probe.py file` sulla camera: `origin_1.mp4` e `origin_5.mp4` sono MP4
+    H.264 standard (`ftyp isom`, `avc1`), **5280x2972, 14.8 s, nessuna
+    struttura di cifratura**; 30.6 e 16.9 Mbit/s (stessa durata: la differenza
+    è la scena, non fotogrammi persi). Piena risoluzione e in chiaro.
   - **Quindi la piena risoluzione arriva al corpo principale e viene salvata
     sulla memoria principale** con `storage_loc: 0`. Con l'SSD come memoria
     principale dovrebbe finire sull'SSD (prova successiva).
 - **Conclusione (corretta dopo la prova APK):** `storage_loc` sceglie dove
   vanno gli originali: assente = SD dei moduli, `0` = memoria principale,
   `1` = da nessuna parte. Da verificare: (1) che con l'SSD come principale gli
-  `origin_N.mp4` vadano sull'SSD; (2) risoluzione e assenza di cifratura degli
-  `origin_N.mp4` (`elf_probe.py file`); (3) se con `storage_loc: 0` il
+  `origin_N.mp4` vadano sull'SSD; (2) ~~risoluzione e cifratura~~ verificato:
+  5280x2972 in chiaro; (3) se con `storage_loc: 0` il
   controllo `-310` delle SD dei moduli viene saltato; (4) il bitrate massimo
   che il trasferimento moduli → corpo principale regge (l'APK usa 30000,
   l'app Insta360 180000).
