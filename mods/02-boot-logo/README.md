@@ -83,13 +83,32 @@ Dalla cartella del repo, sul Mac:
 Sulla camera di test (serve l'accesso adb/root e il backup già fatto, vedi
 `docs/root-access-and-backup.md`):
 
-5. **Copia il file sulla camera** e salva l'originale accanto:
+5. **Applica il logo con lo script** (consigliato):
    ```bash
-   adb push mods/02-boot-logo/work/bootanimation /tmp/bootanimation.wti
-   adb shell 'cp -a /usr/local/bin/bootanimation /usr/local/bin/bootanimation.orig && cp /tmp/bootanimation.wti /usr/local/bin/bootanimation && chmod 755 /usr/local/bin/bootanimation && md5sum /usr/local/bin/bootanimation*'
+   mods/02-boot-logo/deploy_logo.sh
    ```
-   Se il filesystem è in sola lettura, prima `adb shell mount -o remount,rw /`.
+   Lo script prende il `bootanimation` **dalla camera collegata**, non quello del
+   pacchetto. È importante: un binario di un'altra versione firmware potrebbe non
+   partire (librerie diverse), e siccome `bootanimation` è nella catena di avvio
+   la camera non finirebbe di accendersi. Partendo dal file della camera stessa,
+   il mod vale per ogni unità qualunque firmware abbia.
+
+   Cosa fa, fermandosi al primo controllo che non torna:
+   1. copia `/usr/local/bin/bootanimation` dalla camera e verifica l'MD5;
+   2. crea la versione col logo (`logo_tool.py patch`);
+   3. la carica in `/tmp` sulla camera e verifica l'MD5;
+   4. salva l'originale in `/usr/local/bin/bootanimation.orig` (solo la prima
+      volta, così il backup non viene mai sovrascritto), poi sostituisce con un
+      rename atomico e verifica di nuovo l'MD5 del file installato e del backup.
+
+   Rilanciarlo è sicuro: se trova già il `.orig`, riparte da quello. Una copia
+   dell'originale resta anche sul Mac, in `work/bootanimation.<seriale>.orig`.
+   Se segnala un filesystem in sola lettura: `adb shell mount -o remount,rw /` e
+   rilancia.
 6. **Riavvia la camera** e guarda lo schermo all'accensione.
+
+I passi 2-4 qui sopra (sul file del pacchetto) servono a vedere e controllare il
+risultato sul Mac; lo script rifà la stessa operazione sul file della camera.
 
 ## Rollback
 
@@ -105,7 +124,8 @@ finisce di avviarsi**.
 
 - La patch cambia solo byte di dati (il bitmap), non il codice: la logica, che
   imposta `sys.bootan`, resta identica. Il rischio vero è una copia sbagliata o
-  corrotta, per questo al passo 5 si controllano `md5sum` e permessi.
+  corrotta, o un binario di un'altra build: per questo lo script parte dal file
+  della camera e verifica l'MD5 a ogni passaggio.
 - Se dopo il riavvio la camera non si avvia del tutto, adb è comunque
   disponibile: `adbd` è nella classe `base`, che parte prima di `bootanimation`.
   Da lì si esegue il rollback qui sopra. Ultima risorsa: la console UART.
