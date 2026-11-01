@@ -122,14 +122,23 @@ Con la camera collegata in adb come root:
 tools/backup_titan.sh /Volumes/<disco-esterno>
 ```
 Salva sul Mac, in una cartella datata: informazioni sul sistema,
-`applayer.tar` (`/usr/local`, `/home/nvidia/insta360`, `/etc`), le partizioni
-di boot `mmcblk0boot0`/`boot1` e l'immagine dell'intera eMMC (~29 GB; si salta
-con `--senza-immagine`). Ogni trasferimento è verificato: la camera calcola
-l'MD5 degli stessi byte che invia e lo script lo confronta con quello del file
-ricevuto; al primo errore si ferma e dice quale file. Controlla prima lo spazio
-libero. L'immagine della partizione di sistema è presa mentre la camera è
-accesa, quindi è "come dopo uno spegnimento brusco": per i file che modifichiamo
-fa fede `applayer.tar`.
+`applayer.tar` (`/usr/local`, `/home/nvidia/insta360`, `/etc`), la tabella
+delle partizioni (primo e ultimo MiB dell'eMMC), `mmcblk0boot0`/`boot1` e
+**tutte le partizioni tranne quella di sistema** (~1 GB: bootloader, kernel,
+DTB, quello che serve contro i brick). Ogni pezzo viene preparato in `/tmp`
+sulla camera, scaricato con `adb pull` e verificato confrontando l'MD5
+calcolato sulla camera con quello del file ricevuto; al primo errore lo script
+si ferma e dice quale file. Controlla prima lo spazio libero.
+
+Con `--con-sistema` aggiunge la partizione di sistema `mmcblk0p1` (~28 GB). Non
+sta in `/tmp`, quindi viene trasmessa in streaming con `adb shell`: lo script
+prima verifica che il canale non alteri i dati binari e, se li altera, si ferma
+(in quel caso serve la copia via SSH). È presa a camera accesa, quindi è "come
+dopo uno spegnimento brusco": per i file che modifichiamo fa fede
+`applayer.tar`.
+
+Nota: su questa camera `adb exec-out` non è supportato (`error: closed`), per
+questo lo script usa `adb pull`.
 
 I metodi manuali qui sotto restano validi (per esempio via UART).
 
