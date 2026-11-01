@@ -6,12 +6,19 @@
 # build. Ogni passaggio è verificato con l'MD5 e la sostituzione finale è un
 # rename atomico. Non riavvia la camera: lo fai tu dopo aver letto l'esito.
 #
-# Uso:  mods/02-boot-logo/deploy_logo.sh [logo.png]
-#       (default: logo_wti360_94x32.png in questa cartella; codifica: ENC=page-lsb)
+# Sostituisce due immagini del bootanimation:
+#   bootLogo  128x64, la schermata d'avvio ("Insta360 Titan")  ← LOGO_FULL
+#   prologo   94x32, il logo "Pro" ereditato dalla Insta360 Pro ← LOGO_SMALL
+#
+# Uso:  mods/02-boot-logo/deploy_logo.sh
+#       Default: logo_wti360_128x64.png e logo_wti360_94x32.png in questa cartella.
+#       Altra immagine: LOGO_FULL=/percorso/logo.png mods/02-boot-logo/deploy_logo.sh
+#       Codifica dei pixel: ENC=page-lsb (default, verificata sulla Titan).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-LOGO="${1:-$HERE/logo_wti360_94x32.png}"
+LOGO_FULL="${LOGO_FULL:-$HERE/logo_wti360_128x64.png}"
+LOGO_SMALL="${LOGO_SMALL:-$HERE/logo_wti360_94x32.png}"
 ENC="${ENC:-page-lsb}"
 DEV=/usr/local/bin/bootanimation
 WORK="$HERE/work"
@@ -39,9 +46,12 @@ echo "== 1/4 Copio $SRC dalla camera $SERIAL"
 adb pull "$SRC" "$ORIG" >/dev/null
 [ "$(md5_local "$ORIG")" = "$(md5_dev $SRC)" ] || fail "copia dalla camera corrotta"
 
-echo "== 2/4 Creo la versione col logo"
-python3 "$HERE/logo_tool.py" patch "$ORIG" "$LOGO" --encoding "$ENC" --out "$NEW" \
-    | sed -n '/^Nuovo logo/,/^$/p;/^Byte riscritti/p'
+echo "== 2/4 Creo la versione coi loghi"
+python3 "$HERE/logo_tool.py" patch "$ORIG" "$LOGO_FULL" --symbol bootLogo --size 128x64 \
+    --encoding "$ENC" --out "$NEW.tmp" | sed -n '/^Nuovo logo/,/^$/p;/^Byte riscritti/p'
+python3 "$HERE/logo_tool.py" patch "$NEW.tmp" "$LOGO_SMALL" \
+    --encoding "$ENC" --out "$NEW" | sed -n '/^Byte riscritti/p'
+rm -f "$NEW.tmp"
 
 echo "== 3/4 Carico la nuova versione sulla camera e verifico"
 adb push "$NEW" /tmp/bootanimation.wti >/dev/null
@@ -54,6 +64,7 @@ if [ "$(md5_local "$NEW")" != "$(md5_dev $DEV)" ]; then
     fail "la sostituzione non è andata a buon fine (filesystem in sola lettura? prova: adb shell mount -o remount,rw /). Il file sulla camera non è quello nuovo: controlla con il rollback del README."
 fi
 [ "$(md5_local "$ORIG")" = "$(md5_dev $DEV.orig)" ] || fail "il backup $DEV.orig non corrisponde all'originale"
+adb shell "rm -f /tmp/bootanimation.wti" >/dev/null
 
 echo
 echo "Fatto: $DEV ora ha il logo WTI360, l'originale è in $DEV.orig (copia anche in $ORIG)."

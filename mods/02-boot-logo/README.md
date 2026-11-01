@@ -1,53 +1,57 @@
 # Mod 02 — Logo WTI360 all'avvio della camera
 
-**Stato:** strumento pronto e testato su un binario di prova. Da eseguire sul
-`bootanimation` vero e poi provare su UNA unità sacrificabile.
+**Stato:** strumenti testati. Sulla camera di test (01/11) installata la prima
+versione, che sostituiva solo `prologo`: nessun effetto visibile. L'immagine
+giusta è `bootLogo` (vedi sotto); `deploy_logo.sh` ora le sostituisce entrambe.
 
 ## Obiettivo
 
-Sostituire il logo Insta360 che compare sul piccolo schermo all'accensione con
-il logo WTI360.
+Sostituire la schermata "Insta360 Titan" che compare sul piccolo schermo
+all'accensione con il logo WTI360.
 
 ## Cosa abbiamo trovato (01/11)
 
 - Lo splash lo disegna il servizio `bootanimation`, avviato per primo da
   `init.rc` (`service bootan /usr/local/bin/bootanimation`, `oneshot`).
-- Il logo **non è un file esterno**: nel pacchetto non ci sono zip, PNG o BMP. È
-  un bitmap **incorporato nel binario**, nel simbolo:
+- Le immagini **non sono file esterni**: sono bitmap **incorporati nel binario**,
+  in variabili `static` C++ (nella tabella dei simboli i nomi sono codificati,
+  es. `_ZL8bootLogo`; gli strumenti li riconoscono da soli):
 
-  ```
-  prologo_17_16_94_32   →  94×32 pixel, disegnato a x=17, y=16
-  ```
+  | Simbolo | Misura | Offset nel file | Cosa mostra |
+  |---|---|---|---|
+  | `bootLogo` | 128×64, 1024 byte | `0x11cd0` | **la schermata d'avvio "Insta360 Titan"** (schermo intero) |
+  | `prologo_17_16_94_32` | 94×32, 376 byte | `0x181b0` | il logo "Pro", ereditato dalla Insta360 Pro che condivide il codice |
 
-  Il binario è C++ e il logo è una variabile `static`, quindi nella tabella dei
-  simboli il nome compare codificato come `_ZL19prologo_17_16_94_32`. Lo strumento
-  lo riconosce da solo.
-- Lo schermo è **128×64 monocromatico** (c'è un'icona `reboot_128_64` a schermo
-  intero). Ogni pixel è acceso o spento: niente grigi né colori.
-- Il controller dello schermo è un **SSD1306** (funzione
-  `oled_module::ssd1306_disp_icon`), quindi la codifica attesa è `page-lsb`, il
-  suo formato nativo. `show` serve a confermarlo.
-- Il binario ha la tabella dei simboli, quindi si sa esattamente dove sta il
-  bitmap e quanti byte occupa: si riscrivono **solo quei byte**, il resto del
-  file resta identico.
-- Nel binario ci sono anche le icone `set_bottomlogo_*`: sono le voci di menu
-  dell'impostazione `set_logo` (il logo alla base del video 360, il "nadir").
-  È un'altra cosa rispetto allo splash e questo mod non la tocca.
+  Prova: sostituendo solo `prologo`, all'avvio compariva ancora "Insta360
+  Titan"; rendendo `bootLogo` con `show` si legge proprio quella scritta.
+- Lo schermo è **128×64 monocromatico**, pilotato da un controller **SSD1306**
+  (`oled_module::ssd1306_disp_icon`). Codifica dei pixel **`page-lsb`**, il suo
+  formato nativo: confermata con `show` su entrambe le immagini.
+- Si riscrivono **solo i byte delle due immagini**: il resto del file resta
+  identico.
+- Nel binario ci sono anche le icone `set_bottomlogo_*` (voci di menu
+  dell'impostazione `set_logo`, il logo alla base del video 360) e le icone di
+  modalità `live_icon`, `video_icon`, `camera_icon`: questo mod non le tocca.
 
-## Il logo
+## I loghi
 
-**Pronto all'uso:** `logo_wti360_94x32.png` in questa cartella. È il logo WTI360
-(l'icona di Street View Suite) adattato allo schermo: i quattro tasselli in fila,
-`[W][T][I][360]`, invece che a griglia 2×2, che a 32 pixel di altezza verrebbe
-minuscola. Tasselli accesi, lettere scavate. Il "360" è disegnato a mano pixel
-per pixel, perché con un font a quella misura le cifre si impastavano.
-Verificato: i pixel riletti dal binario patchato sono identici a quelli del PNG.
+In questa cartella, tutti già alla misura giusta, in bianco e nero:
+
+| File | Per | Contenuto |
+|---|---|---|
+| `logo_wti360_128x64.png` | `bootLogo` (**predefinito**) | i quattro riquadri `[W][T][I][360]` in fila e sotto "WORLD TRAVEL / IN 360" |
+| `logo_wti360_128x64_griglia.png` | `bootLogo` (alternativa) | la griglia 2×2 fedele al logo, col globo e "360" nel quarto riquadro |
+| `logo_wti360_94x32.png` | `prologo` | i quattro riquadri in fila |
+
+Ricavati dall'icona WTI360 di Street View Suite. Riquadri accesi, lettere
+scavate; il "360" nei riquadri è disegnato a mano pixel per pixel, perché con un
+font a quella misura le cifre si impastavano.
 
 Per preparare un logo diverso:
 
-- **Esattamente 94×32 pixel.** Un'immagine più grande viene ridotta, ma i
-  dettagli sottili spariscono: in prova un testo normale ridotto da 300×90 è
-  scomparso del tutto, è rimasta solo la cornice.
+- **Esattamente la misura dell'immagine da sostituire** (128×64 o 94×32).
+  Un'immagine più grande viene ridotta, ma i dettagli sottili spariscono: in
+  prova un testo normale ridotto da 300×90 a 94×32 è scomparso del tutto.
 - **Bianco e nero puro, tratti spessi** (almeno 2 pixel). Niente sfumature.
 - **Bianco = pixel acceso** (sull'OLED si vede chiaro su nero). Se il logo è
   scuro su chiaro, aggiungi `--invert`.
@@ -55,86 +59,74 @@ Per preparare un logo diverso:
 
 ## Procedura
 
-Dalla cartella del repo, sul Mac:
+Prerequisiti: accesso adb/root e backup già fatto (`docs/root-access-and-backup.md`).
 
-1. **Aggiorna** il repo:
-   ```bash
-   git pull
-   ```
-2. **Trova la codifica dei pixel.** Lo strumento disegna il logo attuale nel
-   terminale in tutte le codifiche compatibili con la sua dimensione. Quella in
-   cui si legge il logo Insta360 è la codifica giusta (es. `page-lsb`, il
-   formato nativo degli OLED tipo SSD1306):
-   ```bash
-   python3 mods/02-boot-logo/logo_tool.py show extracted/titan_update/bin/bootanimation
-   ```
-3. **Genera la copia con il nuovo logo** (l'originale non viene mai toccato; la
-   cartella `work/` è esclusa da git):
-   ```bash
-   python3 mods/02-boot-logo/logo_tool.py patch extracted/titan_update/bin/bootanimation mods/02-boot-logo/logo_wti360_94x32.png --encoding page-lsb --out mods/02-boot-logo/work/bootanimation
-   ```
-   Controlla l'anteprima ASCII "Nuovo logo": è quello che vedrai sullo schermo.
-   Lo strumento stampa anche gli SHA-256 di originale e copia.
-4. **Verifica la copia** rileggendola:
-   ```bash
-   python3 mods/02-boot-logo/logo_tool.py show mods/02-boot-logo/work/bootanimation --encoding page-lsb
-   ```
-
-Sulla camera di test (serve l'accesso adb/root e il backup già fatto, vedi
-`docs/root-access-and-backup.md`):
-
-5. **Applica il logo con lo script** (consigliato):
+1. **Aggiorna** il repo: `git pull`.
+2. **Applica i loghi** con lo script:
    ```bash
    mods/02-boot-logo/deploy_logo.sh
    ```
-   Lo script prende il `bootanimation` **dalla camera collegata**, non quello del
-   pacchetto. È importante: un binario di un'altra versione firmware potrebbe non
-   partire (librerie diverse), e siccome `bootanimation` è nella catena di avvio
-   la camera non finirebbe di accendersi. Partendo dal file della camera stessa,
-   il mod vale per ogni unità qualunque firmware abbia.
+   Per usare la griglia invece del logo predefinito:
+   ```bash
+   LOGO_FULL=mods/02-boot-logo/logo_wti360_128x64_griglia.png mods/02-boot-logo/deploy_logo.sh
+   ```
+3. **Riavvia la camera** e guarda lo schermo all'accensione.
 
-   Cosa fa, fermandosi al primo controllo che non torna:
-   1. copia `/usr/local/bin/bootanimation` dalla camera e verifica l'MD5;
-   2. crea la versione col logo (`logo_tool.py patch`);
-   3. la carica in `/tmp` sulla camera e verifica l'MD5;
-   4. salva l'originale in `/usr/local/bin/bootanimation.orig` (solo la prima
-      volta, così il backup non viene mai sovrascritto), poi sostituisce con un
-      rename atomico e verifica di nuovo l'MD5 del file installato e del backup.
+Lo script prende il `bootanimation` **dalla camera collegata**, non quello del
+pacchetto: un binario di un'altra versione firmware potrebbe non partire
+(librerie diverse), e siccome `bootanimation` è nella catena di avvio la camera
+non finirebbe di accendersi. Così il mod vale per ogni unità.
 
-   Rilanciarlo è sicuro: se trova già il `.orig`, riparte da quello. Una copia
-   dell'originale resta anche sul Mac, in `work/bootanimation.<seriale>.orig`.
-   Se segnala un filesystem in sola lettura: `adb shell mount -o remount,rw /` e
-   rilancia.
-6. **Riavvia la camera** e guarda lo schermo all'accensione.
+Cosa fa, fermandosi al primo controllo che non torna:
+1. copia `/usr/local/bin/bootanimation` dalla camera (o il `.orig`, se esiste
+   già) e verifica l'MD5;
+2. sostituisce `bootLogo` e `prologo` (`logo_tool.py patch`, due passate);
+3. carica il risultato in `/tmp` sulla camera e verifica l'MD5;
+4. salva l'originale in `/usr/local/bin/bootanimation.orig` (solo la prima
+   volta, così non viene mai sovrascritto), sostituisce con un rename atomico,
+   verifica l'MD5 del file installato e del backup, toglie il file temporaneo.
 
-I passi 2-4 qui sopra (sul file del pacchetto) servono a vedere e controllare il
-risultato sul Mac; lo script rifà la stessa operazione sul file della camera.
+Rilanciarlo è sicuro: riparte sempre dall'originale. Una copia dell'originale
+resta anche sul Mac, in `work/bootanimation.<seriale>.orig`. Se segnala un
+filesystem in sola lettura: `adb shell mount -o remount,rw /` e rilancia.
+
+### A mano, per vedere e controllare sul Mac
+
+Disegnare un'immagine del binario nel terminale:
+```bash
+python3 mods/02-boot-logo/logo_tool.py show extracted/titan_update/bin/bootanimation --symbol bootLogo --size 128x64 --encoding page-lsb
+```
+Creare una copia con un logo (l'originale non viene mai toccato):
+```bash
+python3 mods/02-boot-logo/logo_tool.py patch extracted/titan_update/bin/bootanimation mods/02-boot-logo/logo_wti360_128x64.png --symbol bootLogo --size 128x64 --encoding page-lsb --out mods/02-boot-logo/work/bootanimation
+```
+Senza `--symbol`/`--size` lo strumento lavora su `prologo_17_16_94_32`.
 
 ## Rollback
 
 ```bash
 adb shell 'cp -a /usr/local/bin/bootanimation.orig /usr/local/bin/bootanimation'
 ```
-poi riavvia.
+poi riavvia. L'originale è anche nel backup (`applayer.tar`).
 
 **Attenzione: `bootanimation` fa parte della catena di avvio.** In `init.rc`:
 `logd` → `bootanimation`, che imposta `sys.bootan=true` → `update_check` →
 `camerad` e web server. Se `bootanimation` non parte o si blocca, la camera **non
 finisce di avviarsi**.
 
-- La patch cambia solo byte di dati (il bitmap), non il codice: la logica, che
+- La patch cambia solo byte di dati (i bitmap), non il codice: la logica, che
   imposta `sys.bootan`, resta identica. Il rischio vero è una copia sbagliata o
   corrotta, o un binario di un'altra build: per questo lo script parte dal file
   della camera e verifica l'MD5 a ogni passaggio.
 - Se dopo il riavvio la camera non si avvia del tutto, adb è comunque
   disponibile: `adbd` è nella classe `base`, che parte prima di `bootanimation`.
-  Da lì si esegue il rollback qui sopra. Ultima risorsa: la console UART.
+  Da lì si esegue il rollback qui sopra. Ultima risorsa: la console UART (login
+  root automatico su `ttyS0`).
 
 ## Limiti
 
-- **Stessa misura e stessa posizione** del logo originale (94×32 a x=17, y=16).
-  Cambiare dimensione o posizione vuol dire modificare il codice che lo disegna:
-  non è coperto da questo mod.
+- **Stessa misura e stessa posizione** delle immagini originali. Cambiarle vuol
+  dire modificare il codice che le disegna: non è coperto da questo mod.
 - Un aggiornamento firmware riscrive `/usr/local/bin/bootanimation` (`bin/` →
   `/usr/local/bin` nel `bill.list`): dopo un update il mod va riapplicato.
 - Cambia solo lo splash d'avvio. Se il logo Insta360 compare anche in altre
@@ -144,6 +136,7 @@ finisce di avviarsi**.
 
 ## Registro test
 
-| Data | Unità | Codifica | Esito / note |
-|------|-------|----------|--------------|
-|      |       |          |              |
+| Data | Unità | Cosa | Esito / note |
+|------|-------|------|--------------|
+| 01/11 | camera di test (192.168.1.5) | solo `prologo` (94×32) | installato e verificato (MD5), all'avvio ancora "Insta360 Titan": `prologo` non è la schermata d'avvio della Titan |
+| 01/11 | camera di test | `bootLogo` (128×64, logo B) + `prologo` | da provare |
