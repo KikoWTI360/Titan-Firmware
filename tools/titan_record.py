@@ -35,6 +35,10 @@ Valori di storage_loc visti finora (camera di test, firmware v1.2.23, 01/11):
 Senza SD nei moduli, senza storage_loc la camera risponde -310 "module no
 sdcard"; con storage_loc 0 è ancora da provare.
 
+Con adb misura anche i byte ricevuti da ogni interfaccia di rete della camera
+durante la registrazione: i moduli non sono sull'USB (lsusb -t, 01/11), quindi i
+flussi delle lenti arrivano da un'altra strada, probabilmente una rete interna.
+
 --storage-loc N prova un valore qualunque. --bitrate N cambia il bitrate
 dell'origine (kbit/s); con --ssd il default è 30000 come l'APK, altrimenti
 180000 come l'app Insta360. --stato non registra: stampa lo stato della camera
@@ -180,6 +184,43 @@ def disk_used_adb():
     return used
 
 
+def net_rx_adb():
+    """{interfaccia: (velocità Mb/s o None, byte ricevuti)} dalla camera, via adb.
+
+    Serve a vedere da dove arrivano i flussi delle lenti: i moduli non sono
+    sull'USB (lsusb -t, 01/11), probabilmente sono su una rete interna.
+    """
+    if not shutil.which("adb"):
+        return {}
+    cmd = ('for i in /sys/class/net/*; do '
+           'echo "${i##*/} $(cat $i/speed 2>/dev/null || echo -) $(cat $i/statistics/rx_bytes)"; done')
+    try:
+        out = subprocess.run(["adb", "shell", cmd], capture_output=True, text=True, timeout=20).stdout
+    except Exception:
+        return {}
+    rx = {}
+    for line in out.replace("\r", "").splitlines():
+        f = line.split()
+        if len(f) == 3 and f[2].isdigit():
+            speed = int(f[1]) if f[1].lstrip("-").isdigit() and int(f[1]) > 0 else None
+            rx[f[0]] = (speed, int(f[2]))
+    return rx
+
+
+def net_report(before, after, seconds):
+    rows = []
+    for name in sorted(set(before) & set(after)):
+        delta = after[name][1] - before[name][1]
+        if delta >= 1_000_000:
+            rows.append((name, after[name][0], delta))
+    if not rows:
+        return
+    print("\n== Dati ricevuti dalle interfacce di rete della camera (via adb)")
+    for name, speed, delta in rows:
+        rate = delta / seconds / 1e6 if seconds else 0
+        load = f", {rate * 8 / speed * 100:.0f}% del collegamento da {speed} Mb/s" if speed else ""
+        print(f"   {name:<10} {delta / 1e6:>9.1f} MB   ~{rate:.1f} MB/s in {seconds} s{load}")
+
 def space_report(cards_before, cards_after, disk_before, disk_after):
     print("\n== Dove ha scritto la camera (spazio prima → dopo)")
     for name in sorted(set(cards_before) | set(cards_after)):
@@ -287,7 +328,8 @@ def main(argv=None):
             print("   ATTENZIONE: la memoria principale non è l'SSD, gli origin_N.mp4 andranno in "
                   f"{save_path}.\n   Per l'SSD: togli la SD0 (la camera passa da sola a /mnt/udisk1) e ricontrolla con --stato.")
     disk_before = disk_used_adb()
-    cards_after, disk_after = {}, {}
+    net_before = net_rx_adb()
+    cards_after, disk_after, net_after = {}, {}, {}
 
     beat = threading.Thread(target=cam.heartbeat, daemon=True)
     beat.start()
@@ -330,6 +372,7 @@ def main(argv=None):
         with cam.lock:
             cards_after = card_space(cam.last_doc)
         disk_after = disk_used_adb()
+        net_after = net_rx_adb()
     except KeyboardInterrupt:
         print("\nInterrotto.")
     except Exception as ex:
@@ -351,6 +394,7 @@ def main(argv=None):
 
     if stopped:
         space_report(cards_before, cards_after, disk_before, disk_after)
+        net_report(net_before, net_after, args.secondi)
     list_with_adb(record_url)
     return 0 if stopped else 1
 

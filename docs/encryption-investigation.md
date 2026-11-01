@@ -172,6 +172,12 @@ adb shell 'for f in <cartella>/*; do /usr/local/bin/python3.6 /tmp/elf_probe.py 
     tutte e quattro le riprese (anche a 30): non dipende dal bitrate. Da
     leggere con `elf_probe.py file` ("Tempi dei fotogrammi") per capire se è
     l'ultimo fotogramma allungato o un salto di tempo.
+  - `lsusb -t` (01/11): sull'USB c'è solo l'SSD (Bus 04, controller xHCI
+    dedicato, 5000M, usb-storage); due hub USB3 da 4 porte sul Bus 02 sono
+    vuoti. **I moduli non sono sull'USB**: i flussi arrivano al corpo da
+    un'altra strada (ipotesi: rete Ethernet interna). `titan_record.py` ora
+    misura i byte ricevuti per interfaccia durante la registrazione. Se è un
+    collegamento gigabit, il tetto pratico è ~110 MB/s in totale.
   - Da fare: una prova in movimento a 180 (la richiesta sale) controllando che
     i fotogrammi restino uguali su tutte le lenti; altrimenti tetto 100.
 - **Conclusione (corretta dopo la prova APK):** `storage_loc` sceglie dove
