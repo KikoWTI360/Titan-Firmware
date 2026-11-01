@@ -51,7 +51,8 @@ DEST="$DEST_BASE/titan-backup-$TAG-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$DEST/info"
 
 # Partizioni dell'eMMC tranne il sistema (p1), in ordine numerico.
-PARTS=$(dev 'ls /sys/class/block' | grep -E '^mmcblk0p[0-9]+$' | grep -vx 'mmcblk0p1' | sort -t p -k 2 -n)
+# ls -1: adb shell su questa camera gira in un terminale, e senza -1 ls stampa a colonne.
+PARTS=$(dev 'ls -1 /sys/class/block' | grep -E '^mmcblk0p[0-9]+$' | grep -vx 'mmcblk0p1' | sort -t p -k 2 -n) || true
 [ -n "$PARTS" ] || fail "non trovo le partizioni dell'eMMC"
 SECTORS=$(dev 'cat /sys/class/block/mmcblk0/size')
 
