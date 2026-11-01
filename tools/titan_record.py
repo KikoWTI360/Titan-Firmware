@@ -20,7 +20,12 @@ profiles/titan.profile.json, dove sono stati catturati in rete il 27/09:
 Se lo interrompi con Ctrl-C durante la registrazione, ferma la registrazione e
 chiude la sessione prima di uscire.
 
-Uso:   python3 tools/titan_record.py 192.168.1.5 [--secondi 15]
+--ssd aggiunge "storage_loc": 1 all'origine, come nel template GSV del firmware
+custom (cfg/vid_customer.json): chiede di salvare gli originali sull'archivio
+principale (SSD) invece che sulle SD dei moduli. Senza, la camera vuole le SD
+nei moduli: senza schede risponde -310 "module no sdcard" (camera di test, 01/11).
+
+Uso:   python3 tools/titan_record.py 192.168.1.5 [--secondi 15] [--ssd]
 Prima chiudi l'app sul tablet: la camera accetta un solo client alla volta.
 """
 
@@ -149,7 +154,12 @@ def main(argv=None):
     ap.add_argument("host", help="IP della camera, es. 192.168.1.5")
     ap.add_argument("--secondi", type=int, default=15, help="durata (default 15)")
     ap.add_argument("--porta", type=int, default=20000)
+    ap.add_argument("--ssd", action="store_true",
+                    help="storage_loc=1: originali sull'archivio principale (SSD), non sulle SD dei moduli")
     args = ap.parse_args(argv)
+    start_body = json.loads(json.dumps(START_BODY))
+    if args.ssd:
+        start_body["parameters"]["origin"]["storage_loc"] = 1
 
     cam = Titan(args.host, args.porta)
     print(f"== 1/5 Connessione a {cam.base}")
@@ -181,8 +191,14 @@ def main(argv=None):
     started = stopped = False
     record_url = None
     try:
-        print(f"== 2/5 Avvio registrazione ({args.secondi} s)")
-        reply = cam.command(START_BODY, timeout=15)
+        where = "archivio principale (storage_loc=1)" if args.ssd else "SD dei moduli"
+        print(f"== 2/5 Avvio registrazione ({args.secondi} s, originali su: {where})")
+        try:
+            reply = cam.command(start_body, timeout=15)
+        except RuntimeError as ex:
+            if "no sdcard" in str(ex) and not args.ssd:
+                raise RuntimeError(f"{ex}\n   i moduli non hanno le SD: per salvare sull'SSD rilancia con --ssd")
+            raise
         started = True
         record_url = find_key(reply, "_recordUrl")
         print(f"   la camera scrive in: {record_url or '(non indicato nella risposta)'}")
