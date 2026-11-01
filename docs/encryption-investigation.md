@@ -81,6 +81,27 @@ adb push tools/elf_probe.py /tmp/elf_probe.py
 adb shell 'for f in <cartella>/*; do /usr/local/bin/python3.6 /tmp/elf_probe.py file "$f"; echo; done; rm /tmp/elf_probe.py'
 ```
 
+### Risultati sulla camera di test (TITAN 4, ITG4524N4SB4KM, firmware 1.1.010911)
+
+- **Senza SD nei moduli** la registrazione è rifiutata con `-310 "module no
+  sdcard"`, sia senza `storage_loc` sia con `storage_loc: 1`. Il messaggio è in
+  `camerad` (non nel web server Python). Lo schermo mostra in tempo reale le
+  schede mancanti (`No SD(1,2,...)`): i moduli comunicano lo stato della propria
+  scheda al corpo principale.
+- **Prova A, con le 8 SD e l'SSD, senza `storage_loc`** (come l'app): riuscita.
+  - `_recordUrl` = `/mnt/udisk1/VID_20261101_192735`: con l'SSD collegato la
+    memoria principale è l'SSD (la voce "SD0" nello stato riporta lo spazio
+    dell'SSD).
+  - Sull'SSD solo i file leggeri, 34 MB in 15 s: `origin_1..8_lrv.mp4` (versioni
+    a bassa risoluzione, 2-5 MB l'una), `preview.mp4`, `pro.prj` (5373 byte).
+  - I file a piena risoluzione sono sulle SD dei moduli: 101-161 MB per
+    obiettivo in 15 s.
+  - Quindi in questa modalità l'SSD prende il posto della SD0, non quello delle
+    SD dei moduli.
+- Prova B (`storage_loc: 1`, con le 8 SD): da fare. Dice se i file a piena
+  risoluzione possono andare sull'SSD; solo in quel caso ha senso togliere il
+  controllo delle SD da `camerad`.
+
 ## I due test che decidono la strada
 
 ### Test 1 — Impronta di un file registrato (il più importante)
