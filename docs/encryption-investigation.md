@@ -98,9 +98,23 @@ adb shell 'for f in <cartella>/*; do /usr/local/bin/python3.6 /tmp/elf_probe.py 
     obiettivo in 15 s.
   - Quindi in questa modalità l'SSD prende il posto della SD0, non quello delle
     SD dei moduli.
-- Prova B (`storage_loc: 1`, con le 8 SD): da fare. Dice se i file a piena
-  risoluzione possono andare sull'SSD; solo in quel caso ha senso togliere il
-  controllo delle SD da `camerad`.
+- **Prova B, con le 8 SD e l'SSD, `storage_loc: 1`**: la registrazione parte
+  (`/mnt/udisk1/VID_20261101_192908`), ma:
+  - le SD dei moduli **non vengono scritte** (0,0 MB su tutte e otto);
+  - sull'SSD arrivano **solo i file leggeri** (31 MB: 8 `lrv`, `preview.mp4`
+    da 524 KB, `pro.prj`). `df` conferma: 31 MB in tutto sull'SSD.
+  - **I file a piena risoluzione non vengono salvati da nessuna parte.** Non
+    usare `storage_loc: 1` per riprese vere.
+- **Conclusione:** i file a piena risoluzione li codifica e li scrive ogni
+  modulo (SoC Ambarella) sulla propria SD; in questo firmware non vengono
+  trasferiti al corpo principale. `storage_loc: 1` dice ai moduli di non
+  scrivere, ma niente li riceve al loro posto. Togliere il controllo delle SD da
+  `camerad` farebbe partire registrazioni senza file a piena risoluzione: il
+  controllo protegge proprio da questo.
+- Da verificare: `camera._change_module_usb_mode` (in `config.py`) cambia la
+  modalità USB dei moduli; se esistesse una modalità in cui i moduli inviano i
+  file a piena risoluzione al corpo principale, insieme a `storage_loc: 1`
+  darebbe la registrazione diretta su SSD.
 
 ## I due test che decidono la strada
 
