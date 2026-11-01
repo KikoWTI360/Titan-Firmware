@@ -34,7 +34,16 @@ il logo WTI360.
   dell'impostazione `set_logo` (il logo alla base del video 360, il "nadir").
   È un'altra cosa rispetto allo splash e questo mod non la tocca.
 
-## Il logo da preparare
+## Il logo
+
+**Pronto all'uso:** `logo_wti360_94x32.png` in questa cartella. È il logo WTI360
+(l'icona di Street View Suite) adattato allo schermo: i quattro tasselli in fila,
+`[W][T][I][360]`, invece che a griglia 2×2, che a 32 pixel di altezza verrebbe
+minuscola. Tasselli accesi, lettere scavate. Il "360" è disegnato a mano pixel
+per pixel, perché con un font a quella misura le cifre si impastavano.
+Verificato: i pixel riletti dal binario patchato sono identici a quelli del PNG.
+
+Per preparare un logo diverso:
 
 - **Esattamente 94×32 pixel.** Un'immagine più grande viene ridotta, ma i
   dettagli sottili spariscono: in prova un testo normale ridotto da 300×90 è
@@ -62,7 +71,7 @@ Dalla cartella del repo, sul Mac:
 3. **Genera la copia con il nuovo logo** (l'originale non viene mai toccato; la
    cartella `work/` è esclusa da git):
    ```bash
-   python3 mods/02-boot-logo/logo_tool.py patch extracted/titan_update/bin/bootanimation logo_wti360.png --encoding page-lsb --out mods/02-boot-logo/work/bootanimation
+   python3 mods/02-boot-logo/logo_tool.py patch extracted/titan_update/bin/bootanimation mods/02-boot-logo/logo_wti360_94x32.png --encoding page-lsb --out mods/02-boot-logo/work/bootanimation
    ```
    Controlla l'anteprima ASCII "Nuovo logo": è quello che vedrai sullo schermo.
    Lo strumento stampa anche gli SHA-256 di originale e copia.
