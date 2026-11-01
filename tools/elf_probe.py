@@ -320,6 +320,40 @@ def mp4_top_boxes(f, size):
     return boxes
 
 
+def mp4_video_info(moov_data, mdat_size):
+    """(larghezza, altezza, secondi, Mbit/s) dall'indice di un MP4, o None.
+
+    Risoluzione dal 'tkhd' della traccia video (gli ultimi 8 byte, in 16.16),
+    durata da 'mvhd', bitrate medio come dimensione di 'mdat' / durata.
+    """
+    def u32(off):
+        return struct.unpack(">I", moov_data[off:off + 4])[0]
+    w = h = 0
+    pos = moov_data.find(b"tkhd")
+    while pos >= 4:
+        end = pos - 4 + u32(pos - 4)
+        if pos - 4 < end <= len(moov_data):
+            tw, th = u32(end - 8) >> 16, u32(end - 4) >> 16
+            if tw and th:
+                w, h = tw, th
+                break
+        pos = moov_data.find(b"tkhd", pos + 4)
+    seconds = None
+    m = moov_data.find(b"mvhd")
+    if m >= 0:
+        if moov_data[m + 4] == 1:
+            timescale = u32(m + 24)
+            duration = struct.unpack(">Q", moov_data[m + 28:m + 36])[0]
+        else:
+            timescale, duration = u32(m + 16), u32(m + 20)
+        if timescale:
+            seconds = duration / timescale
+    if not (w or seconds):
+        return None
+    mbps = mdat_size * 8 / seconds / 1e6 if seconds else None
+    return w, h, seconds, mbps
+
+
 def cmd_file(path):
     size = os.path.getsize(path)
     with open(path, "rb") as f:
@@ -359,6 +393,19 @@ def cmd_file(path):
     codecs = [t.decode() for t in CODEC_TAGS if t in moov_data]
     crypto = [t.decode() for t in CRYPTO_BOXES if t in moov_data]
     print(f"Codec dichiarati nell'indice: {', '.join(codecs) or 'nessuno riconosciuto'}")
+    mdat_size = sum(b[2] for b in boxes if b[0] == "mdat")
+    vinfo = mp4_video_info(moov_data, mdat_size) if moov_data else None
+    if vinfo:
+        w, h, secs, mbps = vinfo
+        parts = []
+        if w:
+            parts.append(f"{w}x{h}")
+        if secs:
+            parts.append(f"durata {secs:.1f} s")
+        if mbps:
+            rate = f"~{mbps:.1f} Mbit/s" if mbps >= 1 else f"~{mbps * 1000:.0f} kbit/s"
+            parts.append(f"{rate} (video+audio)")
+        print(f"Video: {', '.join(parts)}")
     print(f"Strutture di cifratura (CENC): {', '.join(crypto) or 'nessuna'}")
     if crypto:
         print("Verdetto: MP4 CIFRATO con lo standard CENC: il contenitore è leggibile, "
