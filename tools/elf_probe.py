@@ -354,6 +354,61 @@ def mp4_video_info(moov_data, mdat_size):
     return w, h, seconds, mbps
 
 
+def mp4_children(data, start, end):
+    """(tipo, inizio contenuto, fine) per le strutture figlie in data[start:end]."""
+    pos = start
+    while pos + 8 <= end:
+        size = struct.unpack(">I", data[pos:pos + 4])[0]
+        kind = data[pos + 4:pos + 8].decode("latin-1")
+        hdr = 8
+        if size == 1:
+            size = struct.unpack(">Q", data[pos + 8:pos + 16])[0]
+            hdr = 16
+        elif size == 0:
+            size = end - pos
+        if size < hdr or pos + size > end:
+            return
+        yield kind, pos + hdr, pos + size
+        pos += size
+
+
+def mp4_frame_stats(moov_data):
+    """Fotogrammi della traccia video: (n, n chiave, [dimensioni], {indici chiave}) o None.
+
+    Legge 'stsz' (dimensione di ogni fotogramma) e 'stss' (quali sono fotogrammi
+    chiave) nella traccia con handler 'vide'. Senza 'stss' sono tutti chiave.
+    """
+    if moov_data[4:8] != b"moov":
+        return None
+    def child(start, end, name):
+        return next(((s, e) for k, s, e in mp4_children(moov_data, start, end) if k == name), None)
+    for kind, s, e in mp4_children(moov_data, 8, len(moov_data)):
+        if kind != "trak":
+            continue
+        mdia = child(s, e, "mdia")
+        hdlr = mdia and child(mdia[0], mdia[1], "hdlr")
+        if not hdlr or moov_data[hdlr[0] + 8:hdlr[0] + 12] != b"vide":
+            continue
+        minf = child(mdia[0], mdia[1], "minf")
+        stbl = minf and child(minf[0], minf[1], "stbl")
+        stsz = stbl and child(stbl[0], stbl[1], "stsz")
+        if not stsz:
+            return None
+        fixed, count = struct.unpack(">II", moov_data[stsz[0] + 4:stsz[0] + 12])
+        if fixed:
+            sizes = [fixed] * count
+        else:
+            sizes = list(struct.unpack(">%dI" % count, moov_data[stsz[0] + 12:stsz[0] + 12 + 4 * count]))
+        stss = child(stbl[0], stbl[1], "stss")
+        if stss:
+            n = struct.unpack(">I", moov_data[stss[0] + 4:stss[0] + 8])[0]
+            keys = set(i - 1 for i in struct.unpack(">%dI" % n, moov_data[stss[0] + 8:stss[0] + 8 + 4 * n]))
+        else:
+            keys = set(range(count))
+        return count, len(keys), sizes, keys
+    return None
+
+
 def cmd_file(path):
     size = os.path.getsize(path)
     with open(path, "rb") as f:
@@ -406,6 +461,24 @@ def cmd_file(path):
             rate = f"~{mbps:.1f} Mbit/s" if mbps >= 1 else f"~{mbps * 1000:.0f} kbit/s"
             parts.append(f"{rate} (video+audio)")
         print(f"Video: {', '.join(parts)}")
+        stats = mp4_frame_stats(moov_data)
+        if stats:
+            n, nk, sizes, keys = stats
+            line = f"Fotogrammi: {n}"
+            if secs:
+                line += f" ({n / secs:.2f} al secondo)"
+            line += f", chiave {nk}" + (f" (uno ogni {n / nk:.1f})" if nk else "")
+            print(line)
+            px = w * h if w else 0
+            def desc(label, group):
+                if not group:
+                    return
+                avg = sum(group) / len(group)
+                bpp = f", {avg * 8 / px:.2f} bit/pixel" if px else ""
+                print(f"  {label:<9} medio {avg / 1024:>8.0f} KB, max {max(group) / 1024:>8.0f} KB{bpp}")
+            desc("chiave", [sizes[i] for i in sorted(keys) if i < n])
+            desc("altri", [sizes[i] for i in range(n) if i not in keys])
+            desc("tutti", sizes)
     print(f"Strutture di cifratura (CENC): {', '.join(crypto) or 'nessuna'}")
     if crypto:
         print("Verdetto: MP4 CIFRATO con lo standard CENC: il contenitore è leggibile, "
