@@ -188,7 +188,7 @@ def space_report(cards_before, cards_after, disk_before, disk_after):
         if isinstance(a, (int, float)) and isinstance(b, (int, float)):
             print(f"   {name:<5} ({kind:<6}) libero {b:>10.1f} → {a:>10.1f} MiB   scritti {b - a:>8.1f} MiB")
         else:
-            print(f"   {name:<5} ({kind:<6}) libero {b} → {a}")
+            print(f"   {name:<5} ({kind:<6}) libero {'?' if b is None else b} → {'?' if a is None else a}")
     for mnt in sorted(set(disk_before) | set(disk_after)):
         b, a = disk_before.get(mnt), disk_after.get(mnt)
         if b is not None and a is not None:
@@ -276,9 +276,16 @@ def main(argv=None):
 
     # Spazio di ogni memoria prima della registrazione, per vedere dopo dove ha scritto.
     try:
-        cards_before = card_space(cam.post("/osc/state", {}, timeout=5))
+        state_before = cam.post("/osc/state", {}, timeout=5)
     except Exception:
-        cards_before = {}
+        state_before = {}
+    cards_before = card_space(state_before)
+    save_path = (find_key(state_before, "_external_dev") or {}).get("save_path")
+    if save_path:
+        print(f"   memoria principale (save_path): {save_path}")
+        if args.ssd and "udisk" not in save_path:
+            print("   ATTENZIONE: la memoria principale non è l'SSD, gli origin_N.mp4 andranno in "
+                  f"{save_path}.\n   Per l'SSD: togli la SD0 (la camera passa da sola a /mnt/udisk1) e ricontrolla con --stato.")
     disk_before = disk_used_adb()
     cards_after, disk_after = {}, {}
 

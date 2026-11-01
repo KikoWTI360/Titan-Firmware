@@ -124,6 +124,15 @@ adb shell 'for f in <cartella>/*; do /usr/local/bin/python3.6 /tmp/elf_probe.py 
   - **Quindi la piena risoluzione arriva al corpo principale e viene salvata
     sulla memoria principale** con `storage_loc: 0`. Con l'SSD come memoria
     principale dovrebbe finire sull'SSD (prova successiva).
+- **Prova C, da terminale, `titan_record.py --ssd`** (`storage_loc: 0`, 30000
+  kbit/s, 8 SD nei moduli, SSD collegato ma `save_path` ancora `/mnt/SD0`):
+  stesso risultato dell'APK. `/mnt/SD0/VID_20261101_201044` contiene gli 8
+  `origin_N.mp4` + `pro.prj`, 380 MB in 15 s (`df`: SD0 +379 MiB, SSD 0, SD dei
+  moduli invariate). Il comando dell'APK è quindi riprodotto per intero. Il
+  menu e il riavvio non hanno spostato `save_path` sull'SSD; la camera passa
+  da sola a un'altra memoria principale quando quella attuale viene rimossa.
+  La connessione riporta i moduli con firmware `…211210B1`, lo stesso del
+  pacchetto v1.2.23.
 - **Conclusione (corretta dopo la prova APK):** `storage_loc` sceglie dove
   vanno gli originali: assente = SD dei moduli, `0` = memoria principale,
   `1` = da nessuna parte. Da verificare: (1) che con l'SSD come principale gli
