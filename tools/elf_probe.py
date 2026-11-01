@@ -19,6 +19,11 @@ anche su macOS). Sottocomandi:
       regex (default: chiavi/percorsi/crypto). Trova chiavi JSON tipo "encrypt",
       percorsi SSD, estensioni file.
 
+  symbols <elf> [regex]
+      Simboli della tabella dei simboli (.symtab/.dynsym) con tipo, dimensione,
+      sezione e offset nel file. Serve a trovare dove sta un dato (es. il bitmap
+      del logo d'avvio in bootanimation) per patcharlo byte per byte.
+
   file <path>
       Impronta di un file registrato: primi byte, presenza di box MP4 in chiaro
       (ftyp/moov/mdat), entropia a blocchi (per capire se e' cifrato tutto o
@@ -39,6 +44,7 @@ import sys
 
 CRYPTO_RE = r"(encrypt|decrypt|crypt|cipher|\baes\b|evp_|rsa|\bdes\b|rc4|blowfish|chacha|\bxor\b|scramb|obfus|secret|secure|\bkey\b)"
 STR_RE = r"(encrypt|decrypt|crypt|cipher|aes|evp_|rsa|secret|secure|\bkey\b|scramb|obfus|/mnt|/media|/udisk|udisk|/storage|ssd|\.mp4|\.insv|\.lrv|\.dat|\.enc|origin|storage_loc|save)"
+SYM_TYPES = {0: "NOTYPE", 1: "OBJECT", 2: "FUNC", 3: "SECTION", 4: "FILE", 6: "TLS"}
 MANGLED_RE = re.compile(r"(^_Z|_GLOBAL_|^N\d|St\d|^_ZN|^_ZL|Eigen|ceres|tinyxml|^std)")
 
 
@@ -82,7 +88,7 @@ class Elf:
             else:
                 (name, stype, flags, addr, soff, size, link, info, align, entsize) = \
                     struct.unpack_from(e + "IIIIIIIIII", d, off)
-            secs.append(dict(name=name, type=stype, offset=soff, size=size,
+            secs.append(dict(name=name, type=stype, addr=addr, offset=soff, size=size,
                              link=link, entsize=entsize))
         # risolvi i nomi di sezione
         if self.shstrndx < len(secs):
@@ -155,6 +161,36 @@ class Elf:
                 syms.append(self._cstr(sbase + st_name))
         return syms
 
+    def symbols(self):
+        """Voci di .symtab e .dynsym con indirizzo, dimensione, sezione e offset nel file."""
+        d, e = self.data, self.e
+        secs = self.sections()
+        out = []
+        for symsec in secs:
+            if symsec["type"] not in (2, 11):  # SHT_SYMTAB, SHT_DYNSYM
+                continue
+            sbase = secs[symsec["link"]]["offset"]
+            entsize = symsec["entsize"] or (24 if self.is64 else 16)
+            for i in range(symsec["size"] // entsize):
+                off = symsec["offset"] + i * entsize
+                if self.is64:
+                    st_name, st_info, _, st_shndx, st_value, st_size = \
+                        struct.unpack_from(e + "IBBHQQ", d, off)
+                else:
+                    st_name, st_value, st_size, st_info, _, st_shndx = \
+                        struct.unpack_from(e + "IIIBBH", d, off)
+                if not st_name:
+                    continue
+                sec = secs[st_shndx] if 0 < st_shndx < len(secs) else None
+                file_off = None
+                if sec and sec["type"] != 8:  # SHT_NOBITS (.bss) non ha byte nel file
+                    file_off = st_value - sec["addr"] + sec["offset"]
+                out.append(dict(name=self._cstr(sbase + st_name), value=st_value,
+                                size=st_size, type=SYM_TYPES.get(st_info & 0xF, "?"),
+                                section=sec.get("name_str", "?") if sec else "-",
+                                file_offset=file_off))
+        return out
+
 
 # ----------------------------- subcommands ------------------------------------
 
@@ -206,6 +242,23 @@ def cmd_imports(elf, regex=None):
         print(f"  {s}")
     if not hit:
         print("  (nessuna funzione di cifratura importata)")
+
+
+def cmd_symbols(elf, regex=None):
+    rx = re.compile(regex or ".", re.I)
+    seen = set()
+    rows = []
+    for s in Elf(elf).symbols():
+        key = (s["name"], s["value"])
+        if key in seen or not rx.search(s["name"]):
+            continue
+        seen.add(key)
+        rows.append(s)
+    for s in sorted(rows, key=lambda s: s["name"]):
+        off = f"0x{s['file_offset']:x}" if s["file_offset"] is not None else "-"
+        print(f"  {s['name']:<40} {s['type']:<7} size={s['size']:<7} "
+              f"sezione={s['section']:<10} offset_file={off}")
+    print(f"\n{len(rows)} simboli per /{rx.pattern}/")
 
 
 def cmd_strings(elf, regex=None):
@@ -272,6 +325,8 @@ def main(argv):
             cmd_imports(argv[2], argv[3] if len(argv) > 3 else None)
         elif cmd == "strings":
             cmd_strings(argv[2], argv[3] if len(argv) > 3 else None)
+        elif cmd == "symbols":
+            cmd_symbols(argv[2], argv[3] if len(argv) > 3 else None)
         elif cmd == "file":
             cmd_file(argv[2])
         else:

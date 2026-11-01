@@ -1,0 +1,114 @@
+# Mod 02 — Logo WTI360 all'avvio della camera
+
+**Stato:** strumento pronto e testato su un binario di prova. Da eseguire sul
+`bootanimation` vero e poi provare su UNA unità sacrificabile.
+
+## Obiettivo
+
+Sostituire il logo Insta360 che compare sul piccolo schermo all'accensione con
+il logo WTI360.
+
+## Cosa abbiamo trovato (01/11)
+
+- Lo splash lo disegna il servizio `bootanimation`, avviato per primo da
+  `init.rc` (`service bootan /usr/local/bin/bootanimation`, `oneshot`).
+- Il logo **non è un file esterno**: nel pacchetto non ci sono zip, PNG o BMP. È
+  un bitmap **incorporato nel binario**, nel simbolo:
+
+  ```
+  prologo_17_16_94_32   →  94×32 pixel, disegnato a x=17, y=16
+  ```
+
+- Lo schermo è **128×64 monocromatico** (c'è un'icona `reboot_128_64` a schermo
+  intero). Ogni pixel è acceso o spento: niente grigi né colori.
+- Il binario ha la tabella dei simboli, quindi si sa esattamente dove sta il
+  bitmap e quanti byte occupa: si riscrivono **solo quei byte**, il resto del
+  file resta identico.
+- Nel binario ci sono anche le icone `set_bottomlogo_*`: sono le voci di menu
+  dell'impostazione `set_logo` (il logo alla base del video 360, il "nadir").
+  È un'altra cosa rispetto allo splash e questo mod non la tocca.
+
+## Il logo da preparare
+
+- **Esattamente 94×32 pixel.** Un'immagine più grande viene ridotta, ma i
+  dettagli sottili spariscono: in prova un testo normale ridotto da 300×90 è
+  scomparso del tutto, è rimasta solo la cornice.
+- **Bianco e nero puro, tratti spessi** (almeno 2 pixel). Niente sfumature.
+- **Bianco = pixel acceso** (sull'OLED si vede chiaro su nero). Se il logo è
+  scuro su chiaro, aggiungi `--invert`.
+- Formato PNG. Serve Pillow (`pip install pillow`; è già in Anaconda).
+
+## Procedura
+
+Dalla cartella del repo, sul Mac:
+
+1. **Aggiorna** il repo:
+   ```bash
+   git pull
+   ```
+2. **Trova la codifica dei pixel.** Lo strumento disegna il logo attuale nel
+   terminale in tutte le codifiche compatibili con la sua dimensione. Quella in
+   cui si legge il logo Insta360 è la codifica giusta (es. `page-lsb`, il
+   formato nativo degli OLED tipo SSD1306):
+   ```bash
+   python3 mods/02-boot-logo/logo_tool.py show extracted/titan_update/bin/bootanimation
+   ```
+3. **Genera la copia con il nuovo logo** (l'originale non viene mai toccato; la
+   cartella `work/` è esclusa da git):
+   ```bash
+   python3 mods/02-boot-logo/logo_tool.py patch extracted/titan_update/bin/bootanimation logo_wti360.png --encoding page-lsb --out mods/02-boot-logo/work/bootanimation
+   ```
+   Controlla l'anteprima ASCII "Nuovo logo": è quello che vedrai sullo schermo.
+   Lo strumento stampa anche gli SHA-256 di originale e copia.
+4. **Verifica la copia** rileggendola:
+   ```bash
+   python3 mods/02-boot-logo/logo_tool.py show mods/02-boot-logo/work/bootanimation --encoding page-lsb
+   ```
+
+Sulla camera di test (serve l'accesso adb/root e il backup già fatto, vedi
+`docs/root-access-and-backup.md`):
+
+5. **Copia il file sulla camera** e salva l'originale accanto:
+   ```bash
+   adb push mods/02-boot-logo/work/bootanimation /tmp/bootanimation.wti
+   adb shell 'cp -a /usr/local/bin/bootanimation /usr/local/bin/bootanimation.orig && cp /tmp/bootanimation.wti /usr/local/bin/bootanimation && chmod 755 /usr/local/bin/bootanimation && md5sum /usr/local/bin/bootanimation*'
+   ```
+   Se il filesystem è in sola lettura, prima `adb shell mount -o remount,rw /`.
+6. **Riavvia la camera** e guarda lo schermo all'accensione.
+
+## Rollback
+
+```bash
+adb shell 'cp -a /usr/local/bin/bootanimation.orig /usr/local/bin/bootanimation'
+```
+poi riavvia.
+
+**Attenzione: `bootanimation` fa parte della catena di avvio.** In `init.rc`:
+`logd` → `bootanimation`, che imposta `sys.bootan=true` → `update_check` →
+`camerad` e web server. Se `bootanimation` non parte o si blocca, la camera **non
+finisce di avviarsi**.
+
+- La patch cambia solo byte di dati (il bitmap), non il codice: la logica, che
+  imposta `sys.bootan`, resta identica. Il rischio vero è una copia sbagliata o
+  corrotta, per questo al passo 5 si controllano `md5sum` e permessi.
+- Se dopo il riavvio la camera non si avvia del tutto, adb è comunque
+  disponibile: `adbd` è nella classe `base`, che parte prima di `bootanimation`.
+  Da lì si esegue il rollback qui sopra. Ultima risorsa: la console UART.
+
+## Limiti
+
+- **Stessa misura e stessa posizione** del logo originale (94×32 a x=17, y=16).
+  Cambiare dimensione o posizione vuol dire modificare il codice che lo disegna:
+  non è coperto da questo mod.
+- Un aggiornamento firmware riscrive `/usr/local/bin/bootanimation` (`bin/` →
+  `/usr/local/bin` nel `bill.list`): dopo un update il mod va riapplicato.
+- Cambia solo lo splash d'avvio. Se il logo Insta360 compare anche in altre
+  schermate, quelle le disegna un altro binario (probabilmente `system_server`):
+  si cerca con lo stesso metodo,
+  `python3 tools/elf_probe.py symbols extracted/titan_update/bin/system_server "logo|icon"`.
+
+## Registro test
+
+| Data | Unità | Codifica | Esito / note |
+|------|-------|----------|--------------|
+|      |       |          |              |
