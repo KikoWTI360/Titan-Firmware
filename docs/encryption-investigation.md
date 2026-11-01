@@ -84,8 +84,8 @@ adb shell 'for f in <cartella>/*; do /usr/local/bin/python3.6 /tmp/elf_probe.py 
 ### Risultati sulla camera di test (TITAN 4, ITG4524N4SB4KM, firmware 1.1.010911)
 
 - **Senza SD nei moduli** la registrazione è rifiutata con `-310 "module no
-  sdcard"`, sia senza `storage_loc` sia con `storage_loc: 1` (con
-  `storage_loc: 0` ancora da provare). Il messaggio è in
+  sdcard"`, sia senza `storage_loc` sia con `storage_loc: 1`. Con
+  `storage_loc: 0` invece registra (prova E, sotto). Il messaggio è in
   `camerad` (non nel web server Python). Lo schermo mostra in tempo reale le
   schede mancanti (`No SD(1,2,...)`): i moduli comunicano lo stato della propria
   scheda al corpo principale.
@@ -142,12 +142,21 @@ adb shell 'for f in <cartella>/*; do /usr/local/bin/python3.6 /tmp/elf_probe.py 
   dei moduli invariate (0 MB scritti). SSD da ~1 TB (913973 MiB liberi).
   Procedura: SSD collegato, **SD0 estratta**, verificare `save_path` con
   `--stato`, registrare con `storage_loc: 0`.
+- **Prova E — NESSUNA SCHEDA SD: RIUSCITA** (01/11 ore 20:21). SD0 fuori, SD
+  dei moduli fuori (lo stato le riporta con 0 MiB liberi), solo l'SSD.
+  `titan_record.py --ssd` (`storage_loc: 0`, 30000 kbit/s): **nessun `-310`**,
+  la registrazione parte e `/mnt/udisk1/VID_20261101_202136` contiene gli 8
+  `origin_N.mp4` (52-56 MB ciascuno) + `pro.prj`, 422 MiB in 15 s. Con
+  `storage_loc: 0` `camerad` non controlla le SD dei moduli: **nessuna patch ai
+  binari serve** per registrare la piena risoluzione solo su SSD. Resta da
+  scegliere il bitrate (30000 è quello dell'APK; vedi il calcolo dei bit per
+  pixel e la scala 60000/100000/180000).
 - **Conclusione (corretta dopo la prova APK):** `storage_loc` sceglie dove
   vanno gli originali: assente = SD dei moduli, `0` = memoria principale,
   `1` = da nessuna parte. Da verificare: (1) ~~SSD come principale~~
   verificato, prova D; (2) ~~risoluzione e cifratura~~ verificato:
-  5280x2972 in chiaro; (3) se con `storage_loc: 0` il
-  controllo `-310` delle SD dei moduli viene saltato; (4) il bitrate massimo
+  5280x2972 in chiaro; (3) ~~controllo `-310`~~ saltato con
+  `storage_loc: 0`, prova E; (4) il bitrate massimo
   che il trasferimento moduli → corpo principale regge (l'APK usa 30000,
   l'app Insta360 180000).
 - **I file scritti sull'SSD non sono cifrati** (prova A, analisi sulla camera
