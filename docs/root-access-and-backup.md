@@ -115,6 +115,24 @@ un server SSH attivo e una via di rete.
 
 ## Parte 2 — Backup completo (rete anti-brick) PRIMA di qualsiasi modifica
 
+### Metodo consigliato: `tools/backup_titan.sh` (via adb, verso il Mac)
+
+Con la camera collegata in adb come root:
+```bash
+tools/backup_titan.sh /Volumes/<disco-esterno>
+```
+Salva sul Mac, in una cartella datata: informazioni sul sistema,
+`applayer.tar` (`/usr/local`, `/home/nvidia/insta360`, `/etc`), le partizioni
+di boot `mmcblk0boot0`/`boot1` e l'immagine dell'intera eMMC (~29 GB; si salta
+con `--senza-immagine`). Ogni trasferimento è verificato: la camera calcola
+l'MD5 degli stessi byte che invia e lo script lo confronta con quello del file
+ricevuto; al primo errore si ferma e dice quale file. Controlla prima lo spazio
+libero. L'immagine della partizione di sistema è presa mentre la camera è
+accesa, quindi è "come dopo uno spegnimento brusco": per i file che modifichiamo
+fa fede `applayer.tar`.
+
+I metodi manuali qui sotto restano validi (per esempio via UART).
+
 Due livelli di backup. Fai **entrambi** sulla unità sacrificabile; per la flotta
 basta il livello "file" se la procedura è già validata.
 
