@@ -94,6 +94,7 @@ class Titan:
         self.base = f"http://{host}:{port}"
         self.fingerprint = ""
         self.cam_state = None
+        self.last_doc = {}
         self.last_ok = time.monotonic()
         self.stop_beat = threading.Event()
         self.lock = threading.Lock()
@@ -132,6 +133,7 @@ class Titan:
                 st = find_key(doc, "_cam_state")
                 with self.lock:
                     self.last_ok = time.monotonic()
+                    self.last_doc = doc
                     if st is not None and st != self.cam_state:
                         print(f"   [stato camera {st}: {bits(st)}]", flush=True)
                         self.cam_state = st
@@ -142,6 +144,47 @@ class Titan:
     def silence(self):
         with self.lock:
             return time.monotonic() - self.last_ok
+
+
+def card_space(doc):
+    """{nome: (tipo, MiB liberi)} per le memorie che la camera elenca in _external_dev."""
+    dev = find_key(doc, "_external_dev") or {}
+    return {e["name"]: (e.get("mounttype", "?"), e.get("free"))
+            for e in dev.get("entries") or [] if isinstance(e, dict) and "name" in e}
+
+
+def disk_used_adb():
+    """{punto di mount: MiB usati} per SSD e SD0, letti con adb (vuoto senza adb)."""
+    if not shutil.which("adb"):
+        return {}
+    try:
+        out = subprocess.run(["adb", "shell", "df -Pm /mnt/udisk1 /mnt/SD0 2>/dev/null"],
+                             capture_output=True, text=True, timeout=20).stdout
+    except Exception:
+        return {}
+    used = {}
+    for line in out.replace("\r", "").splitlines()[1:]:
+        f = line.split()
+        if len(f) >= 6 and f[2].isdigit():
+            used[f[5]] = int(f[2])
+    return used
+
+
+def space_report(cards_before, cards_after, disk_before, disk_after):
+    print("\n== Dove ha scritto la camera (spazio prima → dopo)")
+    for name in sorted(set(cards_before) | set(cards_after)):
+        kind, b = cards_before.get(name, ("?", None))
+        a = cards_after.get(name, (kind, None))[1]
+        if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+            print(f"   {name:<5} ({kind:<6}) libero {b:>10.1f} → {a:>10.1f} MiB   scritti {b - a:>8.1f} MiB")
+        else:
+            print(f"   {name:<5} ({kind:<6}) libero {b} → {a}")
+    for mnt in sorted(set(disk_before) | set(disk_after)):
+        b, a = disk_before.get(mnt), disk_after.get(mnt)
+        if b is not None and a is not None:
+            print(f"   {mnt:<12} (adb)      usato  {b:>10} → {a:>10} MiB   scritti {a - b:>8} MiB")
+    if not (cards_before or disk_before):
+        print("   (la camera non ha riportato lo spazio delle memorie e adb non è disponibile)")
 
 
 def list_with_adb(path):
@@ -212,6 +255,14 @@ def main(argv=None):
                 print("   (sessione non chiusa esplicitamente: si libera da sola entro 10 s)")
         return 0
 
+    # Spazio di ogni memoria prima della registrazione, per vedere dopo dove ha scritto.
+    try:
+        cards_before = card_space(cam.post("/osc/state", {}, timeout=5))
+    except Exception:
+        cards_before = {}
+    disk_before = disk_used_adb()
+    cards_after, disk_after = {}, {}
+
     beat = threading.Thread(target=cam.heartbeat, daemon=True)
     beat.start()
     started = stopped = False
@@ -248,6 +299,10 @@ def main(argv=None):
             if st is not None and not (st >> 7 & 1) and not (st & 1):
                 break
             time.sleep(1)
+        time.sleep(3)  # la camera aggiorna lo spazio libero dopo aver chiuso i file
+        with cam.lock:
+            cards_after = card_space(cam.last_doc)
+        disk_after = disk_used_adb()
     except KeyboardInterrupt:
         print("\nInterrotto.")
     except Exception as ex:
@@ -267,6 +322,8 @@ def main(argv=None):
         except Exception:
             print("   (la camera non ha confermato la chiusura: la sessione si libera da sola entro 10 s)")
 
+    if stopped:
+        space_report(cards_before, cards_after, disk_before, disk_after)
     list_with_adb(record_url)
     return 0 if stopped else 1
 
