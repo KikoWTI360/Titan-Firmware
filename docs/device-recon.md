@@ -33,7 +33,7 @@ flash del firmware custom v1.2.23. Solo letture, nessuna modifica.
 | `mmcblk0p2`…`p29` | da 512 KB a 400 MB | partizioni di avvio NVIDIA (bootloader, kernel, DTB, ...) |
 | `mmcblk0boot0`, `boot1` | 4 MB ciascuna | primo stadio di avvio |
 | `mmcblk0rpmb` | 4 MB | area protetta, non si legge |
-| `sda1` | 119 GB, exFAT | `/mnt/SD0`, la scheda SD della scheda madre |
+| `sda1` | 119 GB, exFAT | `/mnt/SD0`: la scheda **SD0** della camera (slot della scheda madre, dietro un lettore USB interno), usata anche per caricare il firmware |
 
 Durante la ricognizione **l'SSD non era collegato** (nessun `/mnt/udisk*`).
 
