@@ -108,6 +108,9 @@ copia del pacchetto di update.
 - [`docs/capture-config-and-webserver-map.md`](docs/capture-config-and-webserver-map.md)
   — dove si toccano **bitrate, codec e parametri delle modalità** di cattura, e
   mappa del web server Python / OSC.
+- [`docs/USB_TRANSPORT.md`](docs/USB_TRANSPORT.md) — tablet ↔ Titan con il
+  **solo cavo USB** (gadget di rete + DHCP sulla camera), senza router né cavo
+  Ethernet: piano e ricognizione.
 
 ---
 
