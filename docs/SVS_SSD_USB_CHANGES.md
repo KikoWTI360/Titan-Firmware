@@ -5,6 +5,22 @@ Brief per il repo `street-view-suite` (profilo Titan). Tutto quello che segue è
 prove sono in `docs/encryption-investigation.md` (prove A-E, 01/11) e
 `docs/USB_TRANSPORT.md` (09/11).
 
+## Fatto (09/11): profilo `titan_ssd` separato
+
+Su richiesta, invece di cambiare il profilo attuale ne è stato aggiunto un
+secondo, così restano entrambe le soluzioni: street-view-suite, branch
+`claude/upbeat-hopper-jcs7c8`, commit `676d17d`:
+- `apps/mobile/assets/camera/titan_ssd.profile.json` (+ copia in `profiles/`,
+  tenuta allineata da `scripts/check-profiles.py`); `titan.profile.json`
+  invariato;
+- differenze: indirizzo `192.168.55.1`, `storage_loc 0`, pre-flight su
+  `save_path = /mnt/udisk1` al posto delle 8 schede, tempo rimasto sull'SSD;
+- test `apps/mobile/test/camera_titan_ssd_profile_test.dart`: fissa dove i due
+  profili Titan possono differire. 342 test della camera passano.
+
+Si carica come gli altri: DeskApp → Settings → Camera module → load a profile
+(vale per tutta la flotta).
+
 ## Perché il tablet oggi non registra su SSD (09/11)
 
 Collegamento solo USB riuscito: il tablet vede `ethernet · eth1 ·
