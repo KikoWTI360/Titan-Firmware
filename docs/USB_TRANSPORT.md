@@ -59,6 +59,21 @@ Galaxy Tab S10 Lite 5G):
   il traffico verso l'ufficio sulla SIM. **Se il collegamento USB appare come
   Ethernet, l'app non va cambiata**: cambia solo `base_url` nel profilo.
 
+Seconda ricognizione (09/11):
+- **Il DHCP sul cavo c'è già**: il `dnsmasq` di Insta360 (`/etc/dnsmasq.conf`)
+  ascolta su `192.168.55.1` e assegna `192.168.55.10-30` (24 h), oltre al Wi-Fi
+  `192.168.43.100-130`. Annuncia gateway e DNS (8.8.8.8): stessa situazione del
+  router senza internet di oggi, gestita da `CameraNet.kt`. Non serve un secondo
+  server.
+- Lo script NVIDIA (`nv-l4t-usb-device-mode.sh`) ha già un ramo `ecm.usb0`
+  (spento) e i descrittori Windows per RNDIS; non imposta mai il MAC.
+- `udisk_test` (Insta360) trasforma la porta in "disco USB" che mostra
+  `/dev/sda1` (SD0), prodotto `Insta360_Pro2`; **nessun altro programma lo
+  lancia**.
+
+Prova temporanea: `tools/titan_usbnet.sh ecm|ncm|rndis|stato` (solo configfs,
+in memoria; riavviando la camera torna l'originale).
+
 ## Come funziona
 
 ```
