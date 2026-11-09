@@ -4,8 +4,33 @@ Obiettivo: il tablet comanda la Titan (OSC, stato, preview) attraverso un cavo
 USB che parte dall'hub già presente sul rig, al posto di cavo Ethernet +
 adattatore + router DHCP. Topologia del rig: `GNSS_BLACKBOX_HW.md` §3.1.
 
-Stato: **piano + ricognizione** (05/11). Niente è stato ancora modificato sulla
+Stato: **ricognizione fatta** (09/11). Niente è stato ancora modificato sulla
 camera.
+
+## Ricognizione (09/11, `tools/titan_usb_recon.sh`, Mac collegato via USB)
+
+- L4T **R28.2.1**, kernel 4.4.38. Il kernel ha tutte le funzioni USB che
+  servono, compilate dentro: **ECM, NCM**, RNDIS, ACM (seriale), mass storage,
+  FunctionFS (adb via USB).
+- La porta funziona già: il gadget NVIDIA `l4t` è **collegato** alla porta
+  (`3550000.xudc`), stato `configured`, a **super-speed (USB 3, 5 Gbit/s)** con
+  il Mac. La nota di `device-recon.md` ("solo non-standard charger") non vale
+  più: probabilmente era un cavo o un collegamento diverso.
+- Il gadget offre **solo RNDIS** (`rndis.usb0`), che macOS non gestisce: per
+  questo il Mac non vede nessuna rete.
+- `host_addr` = `56:1b:b8:16:8e:bc`: **MAC locale** (bit `0x02`), quindi un
+  host Linux/Android chiamerebbe l'interfaccia `usb0`. Trappola 2 confermata.
+- `usb0` è nel bridge `l4tbr0` (`192.168.55.1/24`), già pronto.
+- DHCP: gira un `dnsmasq.bin -d` (probabilmente quello di Insta360 per il Wi-Fi
+  `192.168.43.x`); è disponibile `udhcpd` dentro busybox. Da capire se il
+  dnsmasq serve anche `l4tbr0`.
+- OSC (20000), file (8000), adb (5555) e ssh ascoltano su **`0.0.0.0`**:
+  risponderanno anche sul collegamento USB senza toccare niente.
+- Il MAC di `eth0` è `48:b0:2d:49:e7:b6` (non locale): da qui si ricava il MAC
+  lato tablet.
+- Due binari Insta360 contengono riferimenti al gadget: `udisk_test` (una
+  "modalità disco USB"?) e `Image` (kernel). Da capire se qualcosa li lancia e
+  riconfigura la porta.
 
 ## Cosa sappiamo già
 
