@@ -4,8 +4,8 @@ Obiettivo: il tablet comanda la Titan (OSC, stato, preview) attraverso un cavo
 USB che parte dall'hub già presente sul rig, al posto di cavo Ethernet +
 adattatore + router DHCP. Topologia del rig: `GNSS_BLACKBOX_HW.md` §3.1.
 
-Stato: **prova temporanea col Mac riuscita** (09/11): indirizzo via DHCP e
-sessione OSC attraverso il cavo USB. Prossimo: il tablet. Sulla
+Stato: **prova temporanea riuscita col Mac e col tablet** (09/11). Prossimo:
+profilo street-view-suite (`SVS_SSD_USB_CHANGES.md`) e mod 03 permanente. Sulla
 camera nessun file modificato (solo configfs, in memoria).
 
 ## Ricognizione (09/11, `tools/titan_usb_recon.sh`, Mac collegato via USB)
@@ -89,6 +89,17 @@ protocollo di controllo passa dal cavo USB senza toccare niente lato Insta360.
 Ritorno indietro provato sulla camera: `titan_usbnet.sh rndis` rimette RNDIS,
 la porta torna `configured` a super-speed, `usb0` di nuovo nel bridge. (Il
 lease del Mac resta nell'elenco del dnsmasq fino alla scadenza, 24 h.)
+
+## Prova col tablet (09/11): collegamento riuscito
+
+Galaxy Tab S10 Lite, Titan collegata all'hub via USB, `titan_usbnet.sh ecm`:
+Android vede **`ethernet · eth1 · 192.168.55.12`** ("no route out, the camera is
+on this one"), l'ufficio resta sulla SIM, e street-view-suite dà **CAMERA
+CONNECTED** su `192.168.55.1`. Nessuna modifica all'app.
+
+La registrazione si ferma nel pre-flight di street-view-suite (vuole le 8 SD dei
+moduli) e il comando di avvio non manda `storage_loc`: modifiche al profilo in
+`docs/SVS_SSD_USB_CHANGES.md`.
 
 ## Come funziona
 
