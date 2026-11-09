@@ -37,3 +37,4 @@ applica uno script, così è ripetibile su ogni unità della flotta.
 |---|-----|-------|
 | 01 | [Bitrate di registrazione GSV](01-bitrate-gsv/README.md) | Pronto da provare su unità sacrificabile |
 | 02 | [Logo WTI360 all'avvio](02-boot-logo/README.md) | **Funziona** sulla camera di test (01/11) |
+| 03 | [Rete USB verso il tablet e SSD sempre scritto](03-usb-ssd/README.md) | Pronta da provare (09/11) |

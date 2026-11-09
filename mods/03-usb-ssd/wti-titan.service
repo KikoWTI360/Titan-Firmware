@@ -1,0 +1,28 @@
+# wti-titan.service — mod 03 (Titan-Firmware, mods/03-usb-ssd).
+#
+# All'avvio della camera:
+#   1. la porta USB passa da RNDIS a scheda di rete standard (CDC-ECM) con un
+#      MAC che Android chiama eth: il tablet raggiunge la camera su
+#      192.168.55.1 col solo cavo USB (titan_usbnet.sh ecm);
+#   2. ogni 5 s i dati in memoria vengono scritti sull'SSD (ssd_flush.sh), così
+#      pochi secondi dopo lo Stop i file sono completi sul disco.
+#
+# Aggiunge solo questo file e /opt/wti; non modifica niente di Insta360.
+# Rimozione: mods/03-usb-ssd/install.sh --rimuovi (oppure systemctl disable).
+
+[Unit]
+Description=WTI360 Titan: rete USB verso il tablet (ECM) e scrittura regolare sull'SSD
+After=nv-l4t-usb-device-mode.service
+Wants=nv-l4t-usb-device-mode.service
+
+[Service]
+Type=simple
+# Se il gadget USB di NVIDIA non è ancora pronto il cambio fallisce e il
+# servizio riprova dopo 5 s; se è già in ECM non fa niente.
+ExecStartPre=/bin/sh /opt/wti/titan_usbnet.sh ecm
+ExecStart=/bin/sh /opt/wti/ssd_flush.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
