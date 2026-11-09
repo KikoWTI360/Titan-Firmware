@@ -1,6 +1,7 @@
 # Mod 03 — Rete USB verso il tablet e SSD sempre scritto
 
-**Stato:** pronta da provare sulla camera di test (09/11). Le due parti sono
+**Stato:** installata sulla camera di test e attiva a ogni avvio (09/11);
+manca la prova "Stop, 10 s, SSD staccato". Le due parti sono
 già state provate a mano: la rete USB (`tools/titan_usbnet.sh ecm`, Mac e
 tablet, 09/11) e il problema che la scrittura periodica risolve (file senza
 indice se l'SSD si stacca presto, 09/11). Installazione e avvio automatico
@@ -90,3 +91,4 @@ In alternativa: `adb shell systemctl disable --now wti-titan.service` e riavvio
 | 09/11 | camera di test | `titan_usbnet.sh ecm` a mano: Mac (DHCP + OSC) e tablet (SVS "CAMERA CONNECTED") | riuscito |
 | 09/11 | camera di test | ripresa dall'app, SSD staccato presto | file senza indice: motivo della scrittura periodica |
 | 09/11 | simulazione (adb e systemctl finti) | `install.sh`, `--rimuovi`, servizio non attivo | riuscito; da provare sulla camera |
+| 09/11 | camera di test | `install.sh` + riavvio | **riuscito**: servizio `enabled`/`active`, partito 5 s dopo l'avvio; porta in `ecm.usb0` a super-speed (interfaccia `usb1` nel bridge), `ssd_flush` con `sync -f /mnt/udisk1`; il tablet ha ricevuto `192.168.55.12` un secondo dopo. Da fare: ripresa + Stop + 10 s + SSD staccato |
