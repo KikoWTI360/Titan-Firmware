@@ -127,6 +127,21 @@ Requisito in più: nessun dispositivo auto-alimentato deve **reimmettere VBUS**
 sulle porte dell'hub (vedi sopra, backfeed). Va verificato per il u-blox e anche
 per la porta USB della Titan.
 
+**Porte dell'hub Baseus 6-in-1 (09/11)**, ora che la Titan va sull'USB:
+
+| porta dell'hub | cosa ci va |
+|---|---|
+| cavo dell'hub (USB-C) | tablet (dati + ricarica) |
+| **P** — USB-C PD in | caricatore dalla Powerbox (solo alimentazione) |
+| USB-C 10 Gbps "Data only" (era **U**) | **Titan** (rete su USB, `192.168.55.1`) |
+| USB-A 10 Gbps | **u-blox**, con cavo USB-A → USB-C |
+
+Le due porte dati sono equivalenti per l'hub: "Data only" vuol dire solo che
+quella USB-C non accetta ricarica né video. Il u-blox è un dispositivo USB 2.0 a
+bassa velocità e funziona su qualunque delle due. Anche la porta USB-A fornisce
+5 V come la USB-C, quindi vale lo stesso requisito anti-backfeed di prima: usare
+per il u-blox lo stesso tipo di cavo che funzionava sulla porta U.
+
 ---
 
 ## 4. Architettura dei dati
