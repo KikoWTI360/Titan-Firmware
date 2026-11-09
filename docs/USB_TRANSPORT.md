@@ -4,9 +4,9 @@ Obiettivo: il tablet comanda la Titan (OSC, stato, preview) attraverso un cavo
 USB che parte dall'hub già presente sul rig, al posto di cavo Ethernet +
 adattatore + router DHCP. Topologia del rig: `GNSS_BLACKBOX_HW.md` §3.1.
 
-Stato: **catena completa riuscita** (09/11): tablet via solo USB, profilo
-`titan_ssd`, 8 originali sull'SSD senza schede. Prossimo: mod 03 permanente
-(oggi la modalità ECM si perde al riavvio). Sulla
+Stato: **la catena completa registra** (09/11): tablet via solo USB, profilo
+`titan_ssd`, 8 file sull'SSD senza schede; **i file sono da verificare**.
+Poi: mod 03 permanente (oggi la modalità ECM si perde al riavvio). Sulla
 camera nessun file modificato (solo configfs, in memoria).
 
 ## Ricognizione (09/11, `tools/titan_usb_recon.sh`, Mac collegato via USB)
@@ -102,12 +102,13 @@ La registrazione si ferma nel pre-flight di street-view-suite (vuole le 8 SD dei
 moduli) e il comando di avvio non manda `storage_loc`: modifiche al profilo in
 `docs/SVS_SSD_USB_CHANGES.md`.
 
-## Catena completa (09/11, 19:37): riuscita
+## Catena completa (09/11, 19:37): la ripresa parte, file DA VERIFICARE
 
 Tablet → hub → cavo USB → Titan (ECM), profilo street-view-suite `titan_ssd`
 (`storage_loc 0`, pre-flight sull'SSD), SD0 tolta, nessuna scheda nei moduli:
-sull'SSD la cartella `VID_20261109_193727` con `origin_1..8.mp4` + `pro.prj`
-(origin_8 65,1 MB). Niente router, niente cavo Ethernet, niente SD.
+la cattura avviene e sull'SSD c'è la cartella `VID_20261109_193727` con
+`origin_1..8.mp4` + `pro.prj` (origin_8 65,1 MB). L'utente li vede "non
+regolari": analisi in corso.
 
 ## Come funziona
 

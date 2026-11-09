@@ -378,6 +378,24 @@ def mp4_children(data, start, end):
         pos += size
 
 
+H264_PROFILES = {66: "Baseline", 77: "Main", 88: "Extended", 100: "High",
+                 110: "High 10", 122: "High 4:2:2", 244: "High 4:4:4"}
+
+
+def mp4_avc_info(moov_data):
+    """(profilo, livello) H.264 dal box avcC, es. ("High", "5.1"), o None.
+
+    Il livello dice quanto è grande il video che un decoder deve reggere:
+    i decoder hardware dei Mac e la maggior parte dei lettori arrivano a 5.2
+    (circa 9,4 milioni di pixel per fotogramma); 5280x2972 sono 15,7 milioni.
+    """
+    i = moov_data.find(b"avcC")
+    if i < 0 or i + 8 > len(moov_data):
+        return None
+    prof, level = moov_data[i + 5], moov_data[i + 7]
+    return H264_PROFILES.get(prof, str(prof)), "%d.%d" % (level // 10, level % 10)
+
+
 def mp4_frame_stats(moov_data):
     """Fotogrammi della traccia video: (n, n chiave, [dimensioni], {indici chiave}) o None.
 
@@ -457,6 +475,9 @@ def mp4_summary(path):
         info = mp4_video_info(moov_data, mdat)
         if info:
             out["w"], out["h"], out["seconds"] = info[0], info[1], info[2]
+        avc = mp4_avc_info(moov_data)
+        if avc:
+            out["h264_profile"], out["h264_level"] = avc
         stats = mp4_frame_stats(moov_data)
         if not stats:
             out["error"] = "traccia video non trovata"
@@ -547,6 +568,9 @@ def cmd_file(path):
             rate = f"~{mbps:.1f} Mbit/s" if mbps >= 1 else f"~{mbps * 1000:.0f} kbit/s"
             parts.append(f"{rate} (video+audio)")
         print(f"Video: {', '.join(parts)}")
+        avc = mp4_avc_info(moov_data)
+        if avc:
+            print(f"H.264: profilo {avc[0]}, livello {avc[1]}")
         stats = mp4_frame_stats(moov_data)
         if stats:
             n, nk, sizes, keys, timing = stats
