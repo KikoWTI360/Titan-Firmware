@@ -4,8 +4,8 @@ Obiettivo: il tablet comanda la Titan (OSC, stato, preview) attraverso un cavo
 USB che parte dall'hub già presente sul rig, al posto di cavo Ethernet +
 adattatore + router DHCP. Topologia del rig: `GNSS_BLACKBOX_HW.md` §3.1.
 
-Stato: **prova temporanea col Mac riuscita** (09/11): il Mac riceve un
-indirizzo sul cavo USB. Prossimo: OSC attraverso il cavo, poi il tablet. Sulla
+Stato: **prova temporanea col Mac riuscita** (09/11): indirizzo via DHCP e
+sessione OSC attraverso il cavo USB. Prossimo: il tablet. Sulla
 camera nessun file modificato (solo configfs, in memoria).
 
 ## Ricognizione (09/11, `tools/titan_usb_recon.sh`, Mac collegato via USB)
@@ -81,6 +81,10 @@ in memoria; riavviando la camera torna l'originale).
 scheda `en15` con il MAC previsto `48:b0:2d:49:e7:b7` (ricavato da `eth0`, non
 locale) e riceve **`192.168.55.12`** dal dnsmasq di Insta360. Nessun driver,
 nessuna configurazione sul Mac.
+
+Poi `titan_record.py 192.168.55.1 --stato` **attraverso il cavo USB**: sessione
+aperta (seriale ITG4524N4SB4KM, firmware 1.1.010911) e stato completo. Il
+protocollo di controllo passa dal cavo USB senza toccare niente lato Insta360.
 
 ## Come funziona
 
