@@ -4,9 +4,10 @@ Obiettivo: il tablet comanda la Titan (OSC, stato, preview) attraverso un cavo
 USB che parte dall'hub già presente sul rig, al posto di cavo Ethernet +
 adattatore + router DHCP. Topologia del rig: `GNSS_BLACKBOX_HW.md` §3.1.
 
-Stato: **la catena completa registra** (09/11): tablet via solo USB, profilo
-`titan_ssd`, 8 file sull'SSD senza schede; **i file sono da verificare**.
-Poi: mod 03 permanente (oggi la modalità ECM si perde al riavvio). Sulla
+Stato: **la catena completa funziona** (09/11): tablet via solo USB, profilo
+`titan_ssd`, 8 originali completi sull'SSD senza schede, a patto di staccare
+l'SSD abbastanza dopo lo Stop. Prossimo: mod 03 (ECM all'avvio + scrittura
+periodica sull'SSD). Sulla
 camera nessun file modificato (solo configfs, in memoria).
 
 ## Ricognizione (09/11, `tools/titan_usb_recon.sh`, Mac collegato via USB)
@@ -102,13 +103,28 @@ La registrazione si ferma nel pre-flight di street-view-suite (vuole le 8 SD dei
 moduli) e il comando di avvio non manda `storage_loc`: modifiche al profilo in
 `docs/SVS_SSD_USB_CHANGES.md`.
 
-## Catena completa (09/11, 19:37): la ripresa parte, file DA VERIFICARE
+## Catena completa (09/11): funziona, ma l'SSD va staccato tardi
 
 Tablet → hub → cavo USB → Titan (ECM), profilo street-view-suite `titan_ssd`
 (`storage_loc 0`, pre-flight sull'SSD), SD0 tolta, nessuna scheda nei moduli:
 la cattura avviene e sull'SSD c'è la cartella `VID_20261109_193727` con
-`origin_1..8.mp4` + `pro.prj` (origin_8 65,1 MB). L'utente li vede "non
-regolari": analisi in corso.
+`origin_1..8.mp4` + `pro.prj` (origin_8 65,1 MB). Ma i file **non hanno il
+`moov`** (l'indice che la camera scrive alla chiusura) e le dimensioni sono
+tutte multipli esatti di 4096: scrittura interrotta.
+
+Il registro della camera mostra che lato app e camera era tutto giusto:
+`save path /mnt/udisk1`, avvio con `storage_loc 0` e `bitrate 180000`,
+`START_REC_SUC` e `STOP_REC_SUC`.
+
+Seconda ripresa (20:01, `VID_20261109_200118`, ~1 minuto), fermata dall'app e
+SSD staccato **dopo un'attesa più lunga**: file **completi** (anteprima nel
+Finder, 5280×2972 H.264, origin_1 208,7 MB).
+
+**Causa:** la camera chiude bene i file, ma i dati (e l'indice, scritto per
+ultimo) restano nella memoria di Linux e arrivano sull'SSD con ritardo;
+staccandolo prima, la fine del file non c'è. In campo è un rischio di perdere
+una giornata: va risolto sulla camera (mod 03, scrittura periodica sull'SSD),
+non affidato all'attenzione di chi stacca il disco.
 
 ## Come funziona
 
