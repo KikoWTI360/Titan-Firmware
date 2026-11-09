@@ -4,8 +4,9 @@ Obiettivo: il tablet comanda la Titan (OSC, stato, preview) attraverso un cavo
 USB che parte dall'hub già presente sul rig, al posto di cavo Ethernet +
 adattatore + router DHCP. Topologia del rig: `GNSS_BLACKBOX_HW.md` §3.1.
 
-Stato: **ricognizione fatta** (09/11). Niente è stato ancora modificato sulla
-camera.
+Stato: **prova temporanea col Mac riuscita** (09/11): il Mac riceve un
+indirizzo sul cavo USB. Prossimo: OSC attraverso il cavo, poi il tablet. Sulla
+camera nessun file modificato (solo configfs, in memoria).
 
 ## Ricognizione (09/11, `tools/titan_usb_recon.sh`, Mac collegato via USB)
 
@@ -73,6 +74,13 @@ Seconda ricognizione (09/11):
 
 Prova temporanea: `tools/titan_usbnet.sh ecm|ncm|rndis|stato` (solo configfs,
 in memoria; riavviando la camera torna l'originale).
+
+## Prova col Mac (09/11): funziona
+
+`titan_usbnet.sh ecm` sulla camera di test, cavo USB al Mac: macOS crea la
+scheda `en15` con il MAC previsto `48:b0:2d:49:e7:b7` (ricavato da `eth0`, non
+locale) e riceve **`192.168.55.12`** dal dnsmasq di Insta360. Nessun driver,
+nessuna configurazione sul Mac.
 
 ## Come funziona
 
