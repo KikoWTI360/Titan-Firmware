@@ -86,6 +86,10 @@ Poi `titan_record.py 192.168.55.1 --stato` **attraverso il cavo USB**: sessione
 aperta (seriale ITG4524N4SB4KM, firmware 1.1.010911) e stato completo. Il
 protocollo di controllo passa dal cavo USB senza toccare niente lato Insta360.
 
+Ritorno indietro provato sulla camera: `titan_usbnet.sh rndis` rimette RNDIS,
+la porta torna `configured` a super-speed, `usb0` di nuovo nel bridge. (Il
+lease del Mac resta nell'elenco del dnsmasq fino alla scadenza, 24 h.)
+
 ## Come funziona
 
 ```
