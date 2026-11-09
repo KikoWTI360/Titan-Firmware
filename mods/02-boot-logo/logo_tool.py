@@ -26,6 +26,14 @@ Uso tipico:
     python3 mods/02-boot-logo/logo_tool.py patch extracted/titan_update/bin/bootanimation \
         logo_wti360.png --encoding page-lsb --out mods/02-boot-logo/work/bootanimation
 
+  patch ... --testo "FW 1.1.010911" [--testo-pos basso-destra|basso-centro|basso-sinistra]
+      Scrive anche un testo piccolo (font 3x5 pixel) in basso sul logo: serve a
+      vedere all'avvio quale firmware gira. Il riquadro del testo viene
+      svuotato; se copriva pixel del logo lo strumento lo dice.
+
+  anteprima <logo.png> --out FILE.png [--testo ...] [--scala 4]
+      Disegna come apparirà il logo (col testo) senza toccare nessun binario.
+
 Pixel "accesi" = chiari (sull'OLED sono i punti bianchi). Un logo scuro su
 sfondo chiaro va passato con --invert.
 """
@@ -167,6 +175,55 @@ def cmd_show(args):
     return 0
 
 
+# ----------------------------- testo 3x5 ------------------------------------
+# Font minimo per scrivere la versione sul logo: cifre, maiuscole e pochi segni.
+# Ogni carattere è 3 colonne x 5 righe; tra un carattere e l'altro 1 colonna vuota.
+FONT_3X5 = {
+    "0": "111 101 101 101 111", "1": "010 110 010 010 111", "2": "111 001 111 100 111",
+    "3": "111 001 111 001 111", "4": "101 101 111 001 001", "5": "111 100 111 001 111",
+    "6": "111 100 111 101 111", "7": "111 001 010 010 010", "8": "111 101 111 101 111",
+    "9": "111 101 111 001 111", ".": "000 000 000 000 010", "-": "000 000 111 000 000",
+    ":": "000 010 000 010 000", "/": "001 001 010 100 100", " ": "000 000 000 000 000",
+    "_": "000 000 000 000 111", "+": "000 010 111 010 000",
+    "A": "010 101 111 101 101", "B": "110 101 110 101 110", "C": "011 100 100 100 011",
+    "D": "110 101 101 101 110", "E": "111 100 110 100 111", "F": "111 100 110 100 100",
+    "G": "011 100 101 101 011", "H": "101 101 111 101 101", "I": "111 010 010 010 111",
+    "J": "001 001 001 101 010", "K": "101 101 110 101 101", "L": "100 100 100 100 111",
+    "M": "101 111 111 101 101", "N": "110 101 101 101 101", "O": "010 101 101 101 010",
+    "P": "110 101 110 100 100", "Q": "010 101 101 110 011", "R": "110 101 110 101 101",
+    "S": "011 100 010 001 110", "T": "111 010 010 010 010", "U": "101 101 101 101 111",
+    "V": "101 101 101 101 010", "W": "101 101 111 111 101", "X": "101 101 010 101 101",
+    "Y": "101 101 010 010 010", "Z": "111 001 010 100 111",
+}
+TEXT_POSITIONS = ["basso-destra", "basso-centro", "basso-sinistra"]
+
+
+def stamp_text(rows, text, pos="basso-destra"):
+    """Scrive `text` in basso sul bitmap (lista di righe di bool). -> pixel del logo coperti."""
+    h, w = len(rows), len(rows[0])
+    text = text.upper()
+    missing = sorted({c for c in text if c not in FONT_3X5})
+    if missing:
+        raise SystemExit(f"caratteri non disponibili nel font 3x5: {''.join(missing)!r} "
+                         f"(ci sono cifre, lettere e {' '.join(c for c in '.-:/_+')})")
+    tw, th = 4 * len(text) - 1, 5
+    if tw + 2 > w:
+        raise SystemExit(f"testo troppo lungo: {tw} pixel, lo schermo ne ha {w} ({(w - 1) // 4} caratteri al massimo)")
+    x0 = {"basso-destra": w - tw - 1, "basso-centro": (w - tw) // 2, "basso-sinistra": 1}[pos]
+    y0 = h - th
+    covered = 0
+    for y in range(max(0, y0 - 1), h):                       # riquadro + 1 pixel di margine
+        for x in range(max(0, x0 - 1), min(w, x0 + tw + 1)):
+            covered += rows[y][x]
+            rows[y][x] = False
+    for i, c in enumerate(text):
+        for dy, line in enumerate(FONT_3X5[c].split()):
+            for dx, bit in enumerate(line):
+                if bit == "1":
+                    rows[y0 + dy][x0 + 4 * i + dx] = True
+    return covered
+
+
 def load_logo(path, w, h, threshold, invert):
     try:
         from PIL import Image
@@ -200,6 +257,11 @@ def cmd_patch(args):
     on_value = (max(old) or 0xFF) if args.encoding == "byte" else 0xFF
 
     rows = load_logo(args.logo, w, h, args.threshold, args.invert)
+    if args.testo:
+        covered = stamp_text(rows, args.testo, args.testo_pos)
+        print(f"Testo sul logo: {args.testo.upper()!r} ({args.testo_pos})")
+        if covered:
+            print(f"Avviso: il testo ha coperto {covered} pixel del logo: prova un'altra --testo-pos.")
     new = encode(args.encoding, rows, w, h, on_value)
     assert len(new) == need
 
@@ -220,6 +282,24 @@ def cmd_patch(args):
     print(f"SHA-256 originale: {hashlib.sha256(elf.data).hexdigest()}")
     print(f"SHA-256 patchato:  {hashlib.sha256(patched).hexdigest()}")
     print(f"Scritto: {args.out}")
+    return 0
+
+
+def cmd_preview(args):
+    """Il logo come apparirà sullo schermo (bianco su nero), ingrandito, in un PNG."""
+    from PIL import Image
+    w, h = (int(v) for v in args.size.lower().split("x"))
+    rows = load_logo(args.logo, w, h, args.threshold, args.invert)
+    if args.testo:
+        covered = stamp_text(rows, args.testo, args.testo_pos)
+        if covered:
+            print(f"Avviso: il testo ha coperto {covered} pixel del logo: prova un'altra --testo-pos.")
+    img = Image.new("L", (w, h))
+    img.putdata([255 if v else 0 for row in rows for v in row])
+    k = max(1, args.scala)
+    img = img.resize((w * k, h * k), Image.NEAREST)
+    img.save(args.out)
+    print(f"{ascii_art(rows)}\n\nAnteprima: {args.out} ({w * k}x{h * k})")
     return 0
 
 
@@ -246,7 +326,24 @@ def main(argv=None):
     p.add_argument("--threshold", type=int, default=128, help="soglia 0-255 per pixel acceso")
     p.add_argument("--invert", action="store_true", help="logo scuro su sfondo chiaro")
 
+    def text_opts(p):
+        p.add_argument("--testo", help="testo piccolo da scrivere in basso, es. la versione del firmware")
+        p.add_argument("--testo-pos", choices=TEXT_POSITIONS, default="basso-destra",
+                       help="dove scriverlo (default basso-destra)")
+    text_opts(p)
+
+    p = sub.add_parser("anteprima", help="PNG di come apparirà il logo, senza toccare binari")
+    p.add_argument("logo", help="immagine del logo")
+    p.add_argument("--out", required=True, help="PNG di uscita")
+    p.add_argument("--size", default="128x64", help="misura dello schermo (default 128x64)")
+    p.add_argument("--scala", type=int, default=4, help="ingrandimento (default 4)")
+    p.add_argument("--threshold", type=int, default=128)
+    p.add_argument("--invert", action="store_true")
+    text_opts(p)
+
     args = ap.parse_args(argv)
+    if args.cmd == "anteprima":
+        return cmd_preview(args)
     return cmd_show(args) if args.cmd == "show" else cmd_patch(args)
 
 

@@ -57,6 +57,26 @@ Per preparare un logo diverso:
   scuro su chiaro, aggiungi `--invert`.
 - Formato PNG. Serve Pillow (`pip install pillow`; è già in Anaconda).
 
+## Versione del firmware sul logo (09/11)
+
+`deploy_logo.sh` scrive in basso a destra, piccola (font 3×5 pixel, nelle righe
+59-63 che il logo lascia vuote), la **versione del firmware letta dalla
+camera** al momento del deploy, es. `FW 1.1.010911`: è la stessa che la camera
+dichiara all'app (`camera._connect`), quindi all'avvio si vede quale firmware
+gira davvero. Il pacchetto installato si chiama v1.2.23, ma la camera di test
+si dichiara `1.1.010911`: sul logo va quello che dice la camera.
+
+- serve adb **in rete** (IP:5555) e l'app del tablet **chiusa** (la camera
+  accetta un solo client);
+- testo a scelta: `TESTO="FW 1.2.23 WTI" mods/02-boot-logo/deploy_logo.sh`;
+- nessun testo: `TESTO= mods/02-boot-logo/deploy_logo.sh`;
+- anteprima sul Mac senza toccare la camera:
+  `python3 mods/02-boot-logo/logo_tool.py anteprima mods/02-boot-logo/logo_wti360_128x64.png --testo "FW 1.1.010911" --out /tmp/anteprima.png`.
+
+Il testo è fisso: si legge al deploy. Se un aggiornamento firmware sostituisce
+`bootanimation` torna il logo Insta360, che è a sua volta il segnale che il mod
+va riapplicato (e con la nuova versione).
+
 ## Procedura
 
 Prerequisiti: accesso adb/root e backup già fatto (`docs/root-access-and-backup.md`).
@@ -140,3 +160,4 @@ finisce di avviarsi**.
 |------|-------|------|--------------|
 | 01/11 | camera di test (192.168.1.5) | solo `prologo` (94×32) | installato e verificato (MD5), all'avvio ancora "Insta360 Titan": `prologo` non è la schermata d'avvio della Titan |
 | 01/11 | camera di test | `bootLogo` (128×64, logo B) + `prologo` | **riuscito**: all'avvio compare "WTI 360 / WORLD TRAVEL IN 360" (foto) |
+| 09/11 | simulazione (adb e camera finti) | versione sul logo: letta dalla camera, testo a scelta, nessun testo | riuscito; da provare sulla camera |

@@ -14,12 +14,22 @@
 #       Default: logo_wti360_128x64.png e logo_wti360_94x32.png in questa cartella.
 #       Altra immagine: LOGO_FULL=/percorso/logo.png mods/02-boot-logo/deploy_logo.sh
 #       Codifica dei pixel: ENC=page-lsb (default, verificata sulla Titan).
+#
+# Versione sul logo: in basso a destra, piccola, la versione del firmware
+# LETTA DALLA CAMERA al momento del deploy (la stessa che la camera dichiara
+# all'app), così all'avvio si vede quale firmware gira. Serve adb in rete
+# (IP:5555) e l'app del tablet chiusa (la camera accetta un solo client).
+#       Testo a scelta:  TESTO="FW 1.2.23 WTI" mods/02-boot-logo/deploy_logo.sh
+#       Nessun testo:    TESTO= mods/02-boot-logo/deploy_logo.sh
+# Se un aggiornamento firmware sostituisce bootanimation torna il logo Insta360:
+# anche quello è un segnale visivo (il mod va riapplicato).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 LOGO_FULL="${LOGO_FULL:-$HERE/logo_wti360_128x64.png}"
 LOGO_SMALL="${LOGO_SMALL:-$HERE/logo_wti360_94x32.png}"
 ENC="${ENC:-page-lsb}"
+TESTO="${TESTO-auto}"
 DEV=/usr/local/bin/bootanimation
 WORK="$HERE/work"
 mkdir -p "$WORK"
@@ -35,6 +45,21 @@ TAG=$(printf '%s' "$SERIAL" | tr ':/' '__')
 ORIG="$WORK/bootanimation.$TAG.orig"
 NEW="$WORK/bootanimation.$TAG.wti"
 
+if [ "$TESTO" = auto ]; then
+    case "$SERIAL" in
+        *:*) IP=${SERIAL%%:*} ;;
+        *) fail "per leggere la versione serve adb in rete (IP:5555). Oppure: TESTO=\"FW x.y.z\" (o TESTO= per nessun testo)" ;;
+    esac
+    echo "== 0/4 Leggo la versione del firmware dalla camera $IP"
+    VER=$(python3 "$HERE/../../tools/titan_record.py" "$IP" --stato 2>&1 \
+          | sed -n 's/.*, firmware \([^,]*\).*/\1/p' | head -1 | tr -d '\r ')
+    [ -n "$VER" ] && [ "$VER" != "?" ] || fail "versione non letta (app del tablet aperta? la camera accetta un solo client). Oppure: TESTO=\"FW x.y.z\" (o TESTO= per nessun testo)"
+    TESTO="FW $VER"
+fi
+TEXT_ARGS=()
+[ -n "$TESTO" ] && TEXT_ARGS=(--testo "$TESTO")
+[ -n "$TESTO" ] && echo "   testo sul logo: $TESTO"
+
 # Se il mod è già stato applicato, l'originale vero è il .orig sulla camera.
 SRC=$DEV
 if [ -n "$(adb shell "[ -f $DEV.orig ] && echo si" | tr -d '\r')" ]; then
@@ -47,8 +72,10 @@ adb pull "$SRC" "$ORIG" >/dev/null
 [ "$(md5_local "$ORIG")" = "$(md5_dev $SRC)" ] || fail "copia dalla camera corrotta"
 
 echo "== 2/4 Creo la versione coi loghi"
+# ${arr[@]+...}: con set -u il bash 3.2 del Mac rifiuta un array vuoto.
 python3 "$HERE/logo_tool.py" patch "$ORIG" "$LOGO_FULL" --symbol bootLogo --size 128x64 \
-    --encoding "$ENC" --out "$NEW.tmp" | sed -n '/^Nuovo logo/,/^$/p;/^Byte riscritti/p'
+    --encoding "$ENC" --out "$NEW.tmp" ${TEXT_ARGS[@]+"${TEXT_ARGS[@]}"} \
+    | sed -n '/^Testo sul logo/p;/^Avviso/p;/^Nuovo logo/,/^$/p;/^Byte riscritti/p'
 python3 "$HERE/logo_tool.py" patch "$NEW.tmp" "$LOGO_SMALL" \
     --encoding "$ENC" --out "$NEW" | sed -n '/^Byte riscritti/p'
 rm -f "$NEW.tmp"
