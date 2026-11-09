@@ -4,8 +4,9 @@ Obiettivo: il tablet comanda la Titan (OSC, stato, preview) attraverso un cavo
 USB che parte dall'hub già presente sul rig, al posto di cavo Ethernet +
 adattatore + router DHCP. Topologia del rig: `GNSS_BLACKBOX_HW.md` §3.1.
 
-Stato: **prova temporanea riuscita col Mac e col tablet** (09/11). Prossimo:
-profilo street-view-suite (`SVS_SSD_USB_CHANGES.md`) e mod 03 permanente. Sulla
+Stato: **catena completa riuscita** (09/11): tablet via solo USB, profilo
+`titan_ssd`, 8 originali sull'SSD senza schede. Prossimo: mod 03 permanente
+(oggi la modalità ECM si perde al riavvio). Sulla
 camera nessun file modificato (solo configfs, in memoria).
 
 ## Ricognizione (09/11, `tools/titan_usb_recon.sh`, Mac collegato via USB)
@@ -100,6 +101,13 @@ CONNECTED** su `192.168.55.1`. Nessuna modifica all'app.
 La registrazione si ferma nel pre-flight di street-view-suite (vuole le 8 SD dei
 moduli) e il comando di avvio non manda `storage_loc`: modifiche al profilo in
 `docs/SVS_SSD_USB_CHANGES.md`.
+
+## Catena completa (09/11, 19:37): riuscita
+
+Tablet → hub → cavo USB → Titan (ECM), profilo street-view-suite `titan_ssd`
+(`storage_loc 0`, pre-flight sull'SSD), SD0 tolta, nessuna scheda nei moduli:
+sull'SSD la cartella `VID_20261109_193727` con `origin_1..8.mp4` + `pro.prj`
+(origin_8 65,1 MB). Niente router, niente cavo Ethernet, niente SD.
 
 ## Come funziona
 
