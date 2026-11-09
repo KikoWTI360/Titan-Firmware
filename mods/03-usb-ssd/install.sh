@@ -7,7 +7,7 @@
 #
 # Cosa mette sulla camera (solo file nuovi, niente di Insta360 viene toccato):
 #   /opt/wti/titan_usbnet.sh               (da tools/) porta USB in ECM, MAC per Android
-#   /opt/wti/ssd_flush.sh                  scrittura sull'SSD ogni 5 s
+#   /opt/wti/ssd_flush.py                  scrittura sull'SSD ogni 5 s e "SSD PRONTO"
 #   /etc/systemd/system/wti-titan.service  li avvia a ogni accensione
 # /opt/wti non è tra le cartelle che un aggiornamento Insta360 riscrive
 # (bill.list: /usr/local/bin e /home/nvidia/insta360/etc).
@@ -22,7 +22,7 @@ UNIT=wti-titan.service
 # sorgente sul Mac -> destinazione sulla camera
 FILES=(
     "$ROOT/tools/titan_usbnet.sh:/opt/wti/titan_usbnet.sh"
-    "$HERE/ssd_flush.sh:/opt/wti/ssd_flush.sh"
+    "$HERE/ssd_flush.py:/opt/wti/ssd_flush.py"
     "$HERE/$UNIT:/etc/systemd/system/$UNIT"
 )
 
@@ -64,7 +64,7 @@ for pair in "${FILES[@]}"; do
 done
 
 echo "== 2/4 Installo in /opt/wti e $UNIT"
-cmd="mkdir -p /opt/wti"
+cmd="mkdir -p /opt/wti && rm -f /opt/wti/ssd_flush.sh"
 for pair in "${FILES[@]}"; do
     src=${pair%%:*}; dst=${pair#*:}
     mode=755; case "$dst" in *.service) mode=644 ;; esac
@@ -85,5 +85,6 @@ state=$(dev "systemctl is-active $UNIT 2>/dev/null" | tail -1)
 status
 [ "$state" = active ] || fail "il servizio non è attivo ($state): guarda il registro qui sopra; per tornare indietro: $0 --rimuovi"
 echo
-echo "Fatto: porta USB in ECM e scrittura sull'SSD ogni 5 s, anche dopo ogni riavvio."
+echo "Fatto: porta USB in ECM e scrittura sull'SSD, anche dopo ogni riavvio."
+echo "Dopo ogni Stop: stacca l'SSD solo quando il registro dice 'SSD PRONTO' ($0 --stato)."
 echo "Rimozione: $0 --rimuovi"

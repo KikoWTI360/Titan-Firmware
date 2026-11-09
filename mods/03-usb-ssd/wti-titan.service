@@ -4,8 +4,9 @@
 #   1. la porta USB passa da RNDIS a scheda di rete standard (CDC-ECM) con un
 #      MAC che Android chiama eth: il tablet raggiunge la camera su
 #      192.168.55.1 col solo cavo USB (titan_usbnet.sh ecm);
-#   2. ogni 5 s i dati in memoria vengono scritti sull'SSD (ssd_flush.sh), così
-#      pochi secondi dopo lo Stop i file sono completi sul disco.
+#   2. ogni 5 s i dati in memoria vengono scritti sull'SSD, e quando gli 8
+#      file di una ripresa sono chiusi scrive "SSD PRONTO" nel registro
+#      (ssd_flush.py, col Python di Insta360): da lì l'SSD si può staccare.
 #
 # Aggiunge solo questo file e /opt/wti; non modifica niente di Insta360.
 # Rimozione: mods/03-usb-ssd/install.sh --rimuovi (oppure systemctl disable).
@@ -20,7 +21,7 @@ Type=simple
 # Se il gadget USB di NVIDIA non è ancora pronto il cambio fallisce e il
 # servizio riprova dopo 5 s; se è già in ECM non fa niente.
 ExecStartPre=/bin/sh /opt/wti/titan_usbnet.sh ecm
-ExecStart=/bin/sh /opt/wti/ssd_flush.sh
+ExecStart=/usr/local/bin/python3.6 /opt/wti/ssd_flush.py
 Restart=always
 RestartSec=5
 
